@@ -1,7 +1,7 @@
 # File containing algorithms for Electrostatic 1D Particle-in-Cell simulations
 import numpy as np
 from numpy.random import MT19937, RandomState, SeedSequence
-from classes import Particle, Grid
+from classes import Particle1D, Grid1D
 
 def ChargeAssignmentStep(g, debug):
     # Dimensionless Charge Assignment, see pg. 34 of Hockney & Eastwood
@@ -123,23 +123,23 @@ def RunDiscreteModel(g, debug=False):
 
 if __name__ == '__main__':
     # toggle debug mode
-    debug = True
+    debug = False
 
     # Define an example grid
-    L = 64  # Grid length [m]
-    Ng = 64  # number of cells in grid
+    L = 128  # Grid length [m]
+    Ng = 128  # number of cells in grid
     dt = 0.25  # time-step size [s]
 
     # Run for a few time-steps
-    G = Grid(L=L, Ng=Ng, dt=0.25*dt, T=100*dt)
+    G = Grid1D(L=L, Ng=Ng, dt=0.25*dt, T=300*dt)
 
     # Define some example particles and add them to the grid
-    p1 = Particle(ID="1", x0=0.5*Ng, v0=0)
-    p2 = Particle(ID="2", x0=0.51*Ng, v0=0)
-    p3 = Particle(ID="3", x0=0.52*Ng, v0=0)
-    p4 = Particle(ID="4", x0=0.49*Ng, v0=0)
-    p5 = Particle(ID="5", x0=0.48*Ng, v0=0)
-    p6 = Particle(ID="6", x0=0.53*Ng, v0=0)
+    p1 = Particle1D(ID="1", x0=0.1*Ng, v0=1)
+    p2 = Particle1D(ID="2", x0=0.2*Ng, v0=0.6)
+    p3 = Particle1D(ID="3", x0=0.3*Ng, v0=1)
+    p4 = Particle1D(ID="4", x0=0.45*Ng, v0=-0.5)
+    p5 = Particle1D(ID="5", x0=0.6*Ng, v0=2)
+    p6 = Particle1D(ID="6", x0=0.8*Ng, v0=1)
 
     G.addParticle(p1)
     G.addParticle(p2)
@@ -156,16 +156,16 @@ if __name__ == '__main__':
         rs = RandomState()
 
     # Add a big random distribution of particles
-    for i in range(100):
-        xi = rs.normal(0.6,0.05)
-        G.addParticle(Particle(ID=str(i+7), x0=xi*Ng, v0=0))
+    for i in range(10):
+        xi = rs.normal(0.6,0.1)
+        G.addParticle(Particle1D(ID=str(i+7), x0=xi*Ng, v0=0))
 
     # Define an alternate grid
     G2 = Grid(L=64, Ng=64, dt=0.25, T=100*0.25)
-    G2.addParticle(Particle("1", x0=10.))
-    G2.addParticle(Particle("2", x0=26.))
-    # G2.addParticle(Particle("2alt", x0=26., v0=3.))  # Can uncomment to try with extra particles
-    # G2.addParticle(Particle("3", x0=43.))  # Replace 2 with 2alt and 3 to recreate "3Particle 1D.mp4"
+    G2.addParticle(Particle1D("1", x0=10.))
+    G2.addParticle(Particle1D("2", x0=26.))
+    # G2.addParticle(Particle1D("2alt", x0=26., v0=3.))  # Can uncomment to try with extra particles
+    # G2.addParticle(Particle1D("3", x0=43.))  # Replace 2 with 2alt and 3 to recreate "3Particle 1D.mp4"
 
     # Run the simulation and plot some results
     # Run with G to test many-particle case
@@ -173,9 +173,9 @@ if __name__ == '__main__':
     #    - dt=0.25 recreates Fig. 2.3a as well as "2Particle 1D.mp4"
     #    - dt=1.0 recreates Fig. 2.3b
     #    - dt=2.25 recreates Fig. 2.3c
-    RunDiscreteModel(G2, debug=debug)
-    G2.plotCharge1D()
-    G2.plotPotential1D()
-    G2.plotEField1D()
-    G2.plotState1D()
-    # G2.animateState1D()
+    RunDiscreteModel(G, debug=debug)
+    #G2.plotCharge()
+    #G2.plotPotential()
+    #G2.plotEField()
+    G.plotState()
+    #G.animateState()

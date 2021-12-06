@@ -1,6 +1,7 @@
 # File containing data structures for Electrostatic 1D Particle-in-Cell simulations
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 from moviepy.editor import VideoClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 
@@ -27,7 +28,7 @@ C.update({"debyeLength": np.sqrt(C["eps0"]*C["Kb"]/(C["rho0"]*C["eChg"]**2))})
 C.update({"plasmaFreq": np.sqrt(C["rho0"]*C["eChg"]**2/(C["eps0"]*C["eMass"]))})
 C.update({"vTh": C["debyeLength"]*C["plasmaFreq"]})
 
-class Particle:
+class Particle1D:
     # A class for representing a particle with some mass, charge, and kinematic signature
     def __init__(self, ID, x0=0, v0=0):
         self.ID = ID  # string identifier for particle. Currently not used for anything and may
@@ -38,7 +39,15 @@ class Particle:
         self.v = [v0]  # Velocity in dimensionless units of cell widths per time-step
         self.a = []   # Acceleration in dimensionless units of cell widths per time-step^2
 
-class Grid:
+    def __copy__(self):
+        # Shallow copy of a particle
+        pNew = Particle1D(ID = self.ID+"_copy")
+        pNew.x = self.x[:]
+        pNew.v = self.v[:]
+        pNew.a = self.a[:]
+        return pNew
+
+class Grid1D:
     # A class for representing the 1D grid in which the particles live
     def __init__(self, L, Ng, dt, T):
         self.L = L  # grid length [m]
@@ -57,6 +66,16 @@ class Grid:
         self.C = C.copy()
         self.C.update({"plasmaFreqDT": self.dt * self.C["plasmaFreq"]})
         self.C.update({"qBackground": -self.C["plasmaFreqDT"] ** 2 / 2.})
+
+    def __copy__(self):
+        # Make a copy of the Grid. This must be done carefully, since the particles
+        # contained by the Grid must be copied separately.
+        Gnew = Grid(self.L, self.Ng, self.dt, self.T)
+        for i in range(len(self.Particles)):
+            Gnew.Particles.append(self.Particles[i].__copy__())
+        Gnew.C.update({"avgParticlesPerCell": len(Gnew.Particles)/Gnew.Ng})
+        Gnew.C.update({"delChg": Gnew.C["plasmaFreqDT"]**2 * Gnew.Ng / (2. * len(Gnew.Particles))})
+        return Gnew
 
     def addParticle(self, p):
         # Add a particle to the grid. If the particle position is outside the grid, adjust
@@ -84,7 +103,21 @@ class Grid:
         else:
             return 0
 
-    def plotState1D(self):
+    def updateNg(self, NgNew):
+        # Update all parameters needed to update to a new number of mesh points
+        self.Ng = NgNew
+        self.H = self.L / NgNew
+        self.Charge = np.zeros(NgNew)
+        self.Potential = np.zeros(NgNew)
+        self.EField = np.zeros(NgNew)
+        self.C.update({"avgParticlesPerCell": len(self.Particles) / NgNew})
+        self.C.update({"delChg": self.C["plasmaFreqDT"] ** 2 * NgNew / (2. * len(self.Particles))})
+
+    ############################################
+    ##### PLOTTING/VISUALIZATION FUNCTIONS #####
+    ############################################
+
+    def plotState(self):
         # Plot the position of each particle as a function of time
         for prt in self.Particles:
             plt.plot(range(len(prt.x)), prt.x, 'o', label="Particle "+prt.ID)
@@ -95,7 +128,7 @@ class Grid:
         plt.grid()
         plt.show()
 
-    def plotCharge1D(self):
+    def plotCharge(self):
         # Plot the charge at every point on the grid
         plt.plot(range(self.Ng),self.Charge,'o')
         plt.xlabel("Grid Position [Intervals]")
@@ -104,7 +137,7 @@ class Grid:
         plt.grid()
         plt.show()
 
-    def plotEField1D(self):
+    def plotEField(self):
         # Plot the charge at every point on the grid
         plt.plot(range(self.Ng),self.EField,'o')
         plt.xlabel("Grid Position [Intervals]")
@@ -113,7 +146,7 @@ class Grid:
         plt.grid()
         plt.show()
 
-    def plotPotential1D(self):
+    def plotPotential(self):
         # Plot the potential at every point on the grid
         plt.plot(range(self.Ng), self.Potential, 'o')
         plt.xlabel("Grid Position [Intervals]")
@@ -122,9 +155,9 @@ class Grid:
         plt.grid()
         plt.show()
 
-    def animateState1D(self):
+    def animateState(self):
         # duration of the video
-        duration = 5
+        duration = 60
         fps = 20
 
         # matplot subplot
@@ -138,7 +171,7 @@ class Grid:
             # plotting line
             for prt in self.Particles:
                 ax.plot(prt.x[int(t*fps)%len(prt.x)], 0, 'o', label="Particle " + prt.ID)
-                ax.set_xlim([-0.5,63.5])
+                ax.set_xlim([-0.5,self.Ng-0.5])
 
             # returning numpy image
             return mplfig_to_npimage(fig)
