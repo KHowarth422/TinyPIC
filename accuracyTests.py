@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 from classes import Particle1D, Grid1D
 from stepper import RunDiscreteModel
 
-def compareParticlePositions1D(G1, G2):
-    # Return the sum of absolute distances between Grids G1 and G2. G1 and G2 must contain
-    # the same number of particles. This is mainly a helper function for gridMeshSpacingConvergence().
+def compareParticlePositions1D(G, GTrue):
+    # Return the sum of absolute dimensionless distances between Grids G and GTrue. G and GTrue must contain
+    # the same number of particles. GTrue is treated as the more accurate grid spacing for the purpose of
+    # calculating relative error. This is mainly a helper function for gridMeshSpacingConvergence().
     distSum = 0
-    for prt in range(len(G1.Particles)):
-        distSum += np.abs(G1.Particles[prt].x[-1] - G2.Particles[prt].x[-1])
+    for prt in range(len(G.Particles)):
+        # Particle positions are in units of grid spacings, so must non-dimensionalize to compare
+        distSum += np.abs(G.Particles[prt].x[-1]/G.Ng - GTrue.Particles[prt].x[-1]/GTrue.Ng)
     return distSum
 
 def gridMeshSpacingConvergence1D(Ng, dt):
@@ -42,7 +44,7 @@ def gridMeshSpacingConvergence1D(Ng, dt):
 
     # Now run simulation for each grid with larger and larger number of points, and compare error
     # in position to G_largest
-    pos_errors = np.zeros_like(Ng_list)
+    pos_errors = np.zeros_like(Ng_list,dtype=float)
     for i in range(len(Ng_list)):
         Gi = G.__copy__()
         Gi.updateNg(Ng_list[i])
@@ -55,11 +57,13 @@ def gridMeshSpacingConvergence1D(Ng, dt):
 if __name__ == '__main__':
     # Run a convergence test and plot the results. NOTE: Usually takes a few minutes to run.
     Ng0 = 100
-    dt = 0.0025
+    dt = 0.025
     Ng_list, pos_errors = gridMeshSpacingConvergence1D(Ng0, dt)
-    plt.loglog(Ng_list, pos_errors, 'o--')
+    plt.loglog(Ng_list, pos_errors, 'o--',label="Errors")
+    plt.loglog(Ng_list, 1e3 / Ng_list, '--',label="10^3/Ng")
+    plt.legend()
     plt.xlabel("Number of Grid Points")
-    plt.ylabel("Sum of Absolute Position Errors")
+    plt.ylabel("Sum of Relative Dimensionless Position Errors")
     plt.title("Convergence with Number of Grid Points, 1D Case, dt = "+str(dt))
     plt.grid()
     plt.show()

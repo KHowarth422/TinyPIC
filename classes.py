@@ -1,7 +1,6 @@
 # File containing data structures for Electrostatic 1D Particle-in-Cell simulations
 import numpy as np
 import matplotlib.pyplot as plt
-import copy
 from moviepy.editor import VideoClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 
@@ -70,7 +69,7 @@ class Grid1D:
     def __copy__(self):
         # Make a copy of the Grid. This must be done carefully, since the particles
         # contained by the Grid must be copied separately.
-        Gnew = Grid(self.L, self.Ng, self.dt, self.T)
+        Gnew = Grid1D(self.L, self.Ng, self.dt, self.T)
         for i in range(len(self.Particles)):
             Gnew.Particles.append(self.Particles[i].__copy__())
         Gnew.C.update({"avgParticlesPerCell": len(Gnew.Particles)/Gnew.Ng})
@@ -105,6 +104,14 @@ class Grid1D:
 
     def updateNg(self, NgNew):
         # Update all parameters needed to update to a new number of mesh points
+        # This includes rescaling particle positions
+        for prt in range(len(self.Particles)):
+            for xi in range(len(self.Particles[prt].x)):
+                self.Particles[prt].x[xi] *= NgNew/self.Ng
+            for vi in range(len(self.Particles[prt].v)):
+                self.Particles[prt].v[vi] *= NgNew/self.Ng
+            for ai in range(len(self.Particles[prt].a)):
+                self.Particles[prt].a[ai] *= NgNew/self.Ng
         self.Ng = NgNew
         self.H = self.L / NgNew
         self.Charge = np.zeros(NgNew)
