@@ -54,9 +54,7 @@ class Grid1D:
         self.Ng = Ng  # number of grid points
         self.dt = dt  # time-step size [plasma frequencies]
         self.T = T  # ending simulation time
-        self.Particles = []  # list of all Particles in the grid
-                             # TODO: Particles should maybe be a numpy array instead? Does it matter?
-                             #       I'm only using a list so I can do Particles.append() in Grid.addParticle()
+        self.Particles = np.array([],dtype=Particle1D)  # list of all Particles in the grid
         self.Charge = np.zeros(Ng)  # Dimensionless charge at all grid points
         self.Potential = np.zeros(Ng)  # Dimensionless potential at all grid points
         self.EField = np.zeros(Ng)  # Dimensionless electric field at all grid points
@@ -71,7 +69,7 @@ class Grid1D:
         # contained by the Grid must be copied separately.
         Gnew = Grid1D(self.L, self.Ng, self.dt, self.T)
         for i in range(len(self.Particles)):
-            Gnew.Particles.append(self.Particles[i].__copy__())
+            Gnew.Particles = np.append(Gnew.Particles,self.Particles[i].__copy__())
         Gnew.C.update({"avgParticlesPerCell": len(Gnew.Particles)/Gnew.Ng})
         Gnew.C.update({"delChg": Gnew.C["plasmaFreqDT"]**2 * Gnew.Ng / (2. * len(Gnew.Particles))})
         return Gnew
@@ -88,7 +86,7 @@ class Grid1D:
         while int(np.round(p.x[0])) < 0:
             p.x[0] += self.Ng
 
-        self.Particles.append(p)
+        self.Particles = np.append(self.Particles, p)
 
         # after adding the particle, update the related parameters in the dictionary
         self.C.update({"avgParticlesPerCell": len(self.Particles)/self.Ng})
@@ -119,6 +117,15 @@ class Grid1D:
         self.EField = np.zeros(NgNew)
         self.C.update({"avgParticlesPerCell": len(self.Particles) / NgNew})
         self.C.update({"delChg": self.C["plasmaFreqDT"] ** 2 * NgNew / (2. * len(self.Particles))})
+
+    def getTotalKineticEnergy(self):
+        # Return the total kinetic energy of all particles in the Grid at each time-step
+        # up to the present.
+        TotalKE = np.zeros_like(self.Particles[0].v)
+        for i in range(len(TotalKE)): # At each time-step...
+            for prt in range(len(self.Particles)): # For each particle...
+                TotalKE[i] += 0.5*self.C["eMass"]*self.Particles[prt].v[i]**2
+        return TotalKE
 
     ############################################
     ##### PLOTTING/VISUALIZATION FUNCTIONS #####

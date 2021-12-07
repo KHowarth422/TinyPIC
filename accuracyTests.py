@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from classes import Particle1D, Grid1D
 from stepper import RunDiscreteModel
+import sys
 
 def compareParticlePositions1D(G, GTrue):
     # Return the sum of absolute dimensionless distances between Grids G and GTrue. G and GTrue must contain
@@ -29,7 +30,7 @@ def gridMeshSpacingConvergence1D(Ng, dt):
     L = 100
     G = Grid1D(L, Ng, dt, T=100*dt)
     for i in range(1000):
-        xi = np.random.normal(0.5*L,0.2*L)
+        xi = np.random.normal(0.5*Ng,0.2*Ng)
         G.addParticle(Particle1D(ID=str(i), x0=xi, v0=0))
 
     # The given number of grid points is taken as the lowest. Consider 10 factors of 2
@@ -54,16 +55,61 @@ def gridMeshSpacingConvergence1D(Ng, dt):
     # Return the list of grid point numbers and the list of total position errors
     return Ng_list, pos_errors
 
+def energyConservationTest(Ng, dt):
+    # Test for energy conservation.
+    # Create a grid with Ng grid points and step size dt, create 1000 particles, and
+    # simulate for 100 time-steps.
+    G = Grid1D(L=100, Ng=Ng, dt=dt, T=100*dt)
+    for i in range(1000):
+        xi = np.random.normal(0.5*Ng,0.2*Ng)
+        G.addParticle(Particle1D(ID=str(i), x0=xi, v0=0))
+
+    # Run the model and return the total kinetic energy at each time-step
+    RunDiscreteModel(G)
+    return G.getTotalKineticEnergy()
+
 if __name__ == '__main__':
-    # Run a convergence test and plot the results. NOTE: Usually takes a few minutes to run.
-    Ng0 = 100
-    dt = 0.025
-    Ng_list, pos_errors = gridMeshSpacingConvergence1D(Ng0, dt)
-    plt.loglog(Ng_list, pos_errors, 'o--',label="Errors")
-    plt.loglog(Ng_list, 1e3 / Ng_list, '--',label="10^3/Ng")
-    plt.legend()
-    plt.xlabel("Number of Grid Points")
-    plt.ylabel("Sum of Relative Dimensionless Position Errors")
-    plt.title("Convergence with Number of Grid Points, 1D Case, dt = "+str(dt))
-    plt.grid()
-    plt.show()
+    argList = sys.argv
+    if len(argList) == 1:
+        print("Must use an extra argument to specify a test.")
+        print("  '--mesh Ng dt' - run mesh size convergence test with number of grid points Ng and step size dt")
+        print("  '--energy Ng dt' - run energy conservation test with number of grid points Ng and step size dt")
+        print()
+        print("Example usage: 'python accuracyTests.py --mesh 100 0.025'")
+    elif argList[1] == "--mesh":
+        # Run a convergence test and plot the results. NOTE: Usually takes a few minutes to run.
+        if not len(argList) == 4:
+            print("Must provide Ng and dt arguments.")
+            print("Example usage: 'python accuracyTests.py --mesh 100 0.025'")
+        Ng0 = int(argList[2])
+        dt = float(argList[3])
+        Ng_list, pos_errors = gridMeshSpacingConvergence1D(Ng0, dt)
+        plt.loglog(Ng_list, pos_errors, 'o--',label="Errors")
+        plt.loglog(Ng_list, 1e3 / Ng_list, '--',label="10^3/Ng")
+        plt.legend()
+        plt.xlabel("Number of Grid Points")
+        plt.ylabel("Sum of Absolute Dimensionless Position Errors")
+        plt.title("Convergence with Number of Grid Points, 1D Case, dt = "+str(dt))
+        plt.grid()
+        plt.show()
+    elif argList[1] == "--energy":
+        # Run energy conservation test
+        if not len(argList) == 4:
+            print("Must provide Ng and dt arguments.")
+            print("Example usage: 'python accuracyTests.py --energy 100 0.25'")
+        Ng = int(argList[2])
+        dt = float(argList[3])
+        TotalKE = energyConservationTest(Ng,dt)
+        plt.plot(range(len(TotalKE)),TotalKE,'--o')
+        plt.xlabel("Time-step")
+        plt.ylabel("Total Kinetic Energy")
+        plt.title("Total System Kinetic Energy over Time")
+        plt.grid()
+        plt.show()
+    else:
+        print("Accuracy test",argList[1],"not recognized.")
+        print("Valid tests:")
+        print("  '--mesh Ng dt' - run mesh size convergence test with number of grid points Ng and step size dt")
+        print("  '--energy Ng dt' - run energy conservation test with number of grid points Ng and step size dt")
+        print()
+        print("Example usage: 'python accuracyTests.py --mesh 100 0.025'")

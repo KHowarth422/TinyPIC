@@ -161,7 +161,7 @@ if __name__ == '__main__':
         G.addParticle(Particle1D(ID=str(i+7), x0=xi*Ng, v0=0))
 
     # Define an alternate grid
-    G2 = Grid(L=64, Ng=64, dt=0.25, T=100*0.25)
+    G2 = Grid1D(L=64, Ng=64, dt=0.25, T=100*0.25)
     G2.addParticle(Particle1D("1", x0=10.))
     G2.addParticle(Particle1D("2", x0=26.))
     # G2.addParticle(Particle1D("2alt", x0=26., v0=3.))  # Can uncomment to try with extra particles
@@ -173,9 +173,9 @@ if __name__ == '__main__':
     #    - dt=0.25 recreates Fig. 2.3a as well as "2Particle 1D.mp4"
     #    - dt=1.0 recreates Fig. 2.3b
     #    - dt=2.25 recreates Fig. 2.3c
-    RunDiscreteModel(G, debug=debug)
+    RunDiscreteModel(G2, debug=debug)
     #G2.plotCharge()
     #G2.plotPotential()
     #G2.plotEField()
-    G.plotState()
+    G2.plotState()
     #G.animateState()
