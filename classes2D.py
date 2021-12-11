@@ -30,21 +30,27 @@ C.update({"vTh": C["debyeLength"]*C["plasmaFreq"]})
 
 class Particle2D:
     # A class for representing a particle with some mass, charge, and kinematic signature
-    def __init__(self, ID, x0=np.zeros(2), v0=np.zeros(2)):
+    def __init__(self, ID, x0 = 0, x1 = 0, v0 = 0, v1 = 0):
         self.ID = ID  # string identifier for particle. Currently not used for anything and may
                       # not be necessary. I thought it could possibly be useful to carry around
                       # an identifier, maybe not worth the extra memory especially when we scale
                       # to large numbers of particles.
-        self.x = [x0]  # Position in dimensionless units of intervals [L * H^-1] = [m * m^-1]
-        self.v = [v0]  # Velocity in dimensionless units of cell widths per time-step
-        self.a = []   # Acceleration in dimensionless units of cell widths per time-step^2
+        self.x_0 = [x0]  # Position in dimensionless units of intervals [L * H^-1] = [m * m^-1]
+        self.x_1 = [x1]
+        self.v_0 = [v0]  # Velocity in dimensionless units of cell widths per time-step
+        self.v_1 = [v1]
+        self.a_0 = []   # Acceleration in dimensionless units of cell widths per time-step^2
+        self.a_1 = []
 
     def __copy__(self):
         # Shallow copy of a particle
         pNew = Particle2D(ID = self.ID+"_copy")
-        pNew.x = self.x[:]
-        pNew.v = self.v[:]
-        pNew.a = self.a[:]
+        pNew.x_0 = self.x_0[:]
+        pNew.x_1 = self.x_1[:]
+        pNew.v_0 = self.v_0[:]
+        pNew.v_1 = self.v_1[:]
+        pNew.a_0 = self.a_0[:]
+        pNew.a_1 = self.a_1[:]
         return pNew
 
 class Grid2D:
@@ -58,7 +64,8 @@ class Grid2D:
         self.Particles = np.array([],dtype=Particle2D)  # list of all Particles in the grid
         self.Charge = np.zeros((Ng,Ng))  # Dimensionless charge at all grid points
         self.Potential = np.zeros((Ng,Ng))  # Dimensionless potential at all grid points
-        self.EField = np.zeros((Ng,Ng))  # Dimensionless electric field at all grid points
+        self.EField_0 = np.zeros((Ng,Ng))  # Dimensionless electric field in horizontal direction at all grid points
+        self.EField_1 = np.zeros((Ng,Ng))  # Dimensionless electric field in vertical direction at all grid points
 
         # Populate the dictionary
         self.C = C.copy()
@@ -81,8 +88,8 @@ class Grid2D:
         # Note that the valid range of positions is -0.5 <= x < Ng - 0.5, so that the nearest
         # integer to any particle is a valid grid point index.
 
-        p.x[0][0] = (p.x[0][0] + 1/2) % self.Ng - 1/2
-        p.x[0][1] = (p.x[0][1] + 1/2) % self.Ng - 1/2
+        p.x_0[0] = (p.x_0[0] + 1/2) % self.Ng - 1/2
+        p.x_1[0] = (p.x_1[0] + 1/2) % self.Ng - 1/2
 
         self.Particles = np.append(self.Particles, p)
 
@@ -112,29 +119,30 @@ class Grid2D:
         # This includes rescaling particle positions
         for prt in range(len(self.Particles)):
             for xi in range(len(self.Particles[prt].x)):
-                self.Particles[prt].x[xi][0] *= NgNew/self.Ng
-                self.Particles[prt].x[xi][1] *= NgNew/self.Ng
+                self.Particles[prt].x_0[xi] *= NgNew/self.Ng
+                self.Particles[prt].x_1[xi] *= NgNew/self.Ng
             for vi in range(len(self.Particles[prt].v)):
-                self.Particles[prt].v[vi][0] *= NgNew/self.Ng
-                self.Particles[prt].v[vi][1] *= NgNew/self.Ng
+                self.Particles[prt].v_0[vi] *= NgNew/self.Ng
+                self.Particles[prt].v_1[vi] *= NgNew/self.Ng
             for ai in range(len(self.Particles[prt].a)):
-                self.Particles[prt].a[ai][0] *= NgNew/self.Ng
-                self.Particles[prt].a[ai][1] *= NgNew/self.Ng
+                self.Particles[prt].a_0[ai] *= NgNew/self.Ng
+                self.Particles[prt].a_1[ai] *= NgNew/self.Ng
         self.Ng = NgNew
         self.H = self.L / NgNew
         self.Charge = np.zeros((NgNew, NgNew))
         self.Potential = np.zeros((NgNew, NgNew))
-        self.EField = np.zeros((NgNew, NgNew))
+        self.EField_0 = np.zeros((NgNew, NgNew))
+        self.EField_1 = np.zeros((NgNew, NgNew))
         self.C.update({"avgParticlesPerCell": len(self.Particles) / NgNew**2})
         self.C.update({"delChg": self.C["plasmaFreqDT"] ** 2 * NgNew**2 / (2. * len(self.Particles))}) # COME BACK TO
 
     def getTotalKineticEnergy(self):
         # Return the total kinetic energy of all particles in the Grid at each time-step
         # up to the present.
-        TotalKE = np.zeros_like(self.Particles[0].v)
+        TotalKE = np.zeros_like(self.Particles[0].v_0)
         for i in range(len(TotalKE)): # At each time-step...
             for prt in range(len(self.Particles)): # For each particle...
-                TotalKE[i] += 0.5*self.C["eMass"]*(self.Particles[prt].v[i][0]**2 + self.Particles[prt].v[i][1]**2)
+                TotalKE[i] += 0.5*self.C["eMass"]*(self.Particles[prt].v_0[i]**2 + self.Particles[prt].v_1[i]**2)
         return TotalKE
 
     ############################################
@@ -142,13 +150,13 @@ class Grid2D:
     ############################################
 
     def plotState(self):
-        # Plot the position of each particle as a function of time
+        # Plot the position of each particle
         for prt in self.Particles:
-            plt.plot(range(len(prt.x)), prt.x, 'o', label="Particle "+prt.ID)
+            plt.plot(prt.x_0, prt.x_1, 'o', label="Particle "+prt.ID)
 
-        plt.xlabel("Time-step")
-        plt.ylabel("Position [Intervals]")
-        plt.title("Particle Positions vs. Time")
+        plt.xlabel("x-position")
+        plt.ylabel("y-position")
+        plt.title("Particle Trajectories")
         plt.grid()
         plt.show()
 
@@ -163,10 +171,10 @@ class Grid2D:
 
     def plotEField(self):
         # Plot the charge at every point on the grid
-        plt.plot(range(self.Ng),self.EField,'o')
+        plt.plot(range(self.Ng),self.EField_0,'o')
         plt.xlabel("Grid Position [Intervals]")
         plt.ylabel("EField")
-        plt.title("Grid EField")
+        plt.title("Grid EField x")
         plt.grid()
         plt.show()
 
@@ -194,7 +202,7 @@ class Grid2D:
 
             # plotting line
             for prt in self.Particles:
-                ax.plot(prt.x[int(t*fps)%len(prt.x)], 0, 'o', label="Particle " + prt.ID)
+                ax.plot(prt.x_0[int(t*fps)%len(prt.x_0)], 0, 'o', label="Particle x position " + prt.ID)
                 ax.set_xlim([-0.5,self.Ng-0.5])
 
             # returning numpy image
