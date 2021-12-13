@@ -40,6 +40,12 @@ def PoissonStep(g):
     for p in range(2, g.Ng):
         g.Potential[p] = g.Charge[p-1] + 2.*g.Potential[p-1] - g.Potential[p-2]
 
+    # Calculate the potential energy stored in the potential field and charge distribution
+    PE = 0
+    for p in range(g.Ng):
+        PE += g.Charge[p] * g.Potential[p]
+    g.PE = np.append(g.PE, PE*g.C["PEConversionFactor"])
+
 
 def EFieldStep(g):
     # Calculate the electric field at every point on the grid using known potentials.
@@ -161,7 +167,7 @@ if __name__ == '__main__':
         G.addParticle(Particle1D(ID=str(i+7), x0=xi*Ng, v0=0))
 
     # Define an alternate grid
-    G2 = Grid1D(L=64, Ng=64, dt=0.25, T=100*0.25)
+    G2 = Grid1D(L=64, Ng=64, dt=2.25, T=200*2.25)
     G2.addParticle(Particle1D("1", x0=10.))
     G2.addParticle(Particle1D("2", x0=26.))
     # G2.addParticle(Particle1D("2alt", x0=26., v0=3.))  # Can uncomment to try with extra particles
@@ -178,4 +184,4 @@ if __name__ == '__main__':
     #G2.plotPotential()
     #G2.plotEField()
     G2.plotState()
-    #G.animateState()
+    G2.animateState()

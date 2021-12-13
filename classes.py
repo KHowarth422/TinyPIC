@@ -40,7 +40,7 @@ class Particle1D:
 
     def __copy__(self):
         # Shallow copy of a particle
-        pNew = Particle1D(ID = self.ID+"_copy")
+        pNew = Particle1D(ID=self.ID+"_copy")
         pNew.x = self.x[:]
         pNew.v = self.v[:]
         pNew.a = self.a[:]
@@ -58,6 +58,7 @@ class Grid1D:
         self.Charge = np.zeros(Ng)  # Dimensionless charge at all grid points
         self.Potential = np.zeros(Ng)  # Dimensionless potential at all grid points
         self.EField = np.zeros(Ng)  # Dimensionless electric field at all grid points
+        self.PE = np.array([],dtype=float)  # Potential energy at each time-step
 
         # Populate the dictionary
         self.C = C.copy()
@@ -72,6 +73,7 @@ class Grid1D:
             Gnew.Particles = np.append(Gnew.Particles,self.Particles[i].__copy__())
         Gnew.C.update({"avgParticlesPerCell": len(Gnew.Particles)/Gnew.Ng})
         Gnew.C.update({"delChg": Gnew.C["plasmaFreqDT"]**2 * Gnew.Ng / (2. * len(Gnew.Particles))})
+        Gnew.C.update(({"PEConversionFactor": -16.0 * len(Gnew.Particles) / (Gnew.Ng * Gnew.C["plasmaFreqDT"] ** 2)}))
         return Gnew
 
     def addParticle(self, p):
@@ -91,6 +93,7 @@ class Grid1D:
         # after adding the particle, update the related parameters in the dictionary
         self.C.update({"avgParticlesPerCell": len(self.Particles)/self.Ng})
         self.C.update({"delChg": self.C["plasmaFreqDT"]**2 * self.Ng / (2. * len(self.Particles))})
+        self.C.update(({"PEConversionFactor": -16.0 * len(self.Particles) / (self.Ng * self.C["plasmaFreqDT"] ** 2)}))
 
     def W(self, x):
         # Charge assignment function, Eq. 2.28 on pg. 31 of Hockney & Eastwood
@@ -117,14 +120,27 @@ class Grid1D:
         self.EField = np.zeros(NgNew)
         self.C.update({"avgParticlesPerCell": len(self.Particles) / NgNew})
         self.C.update({"delChg": self.C["plasmaFreqDT"] ** 2 * NgNew / (2. * len(self.Particles))})
+        self.C.update(({"PEConversionFactor": -16.0 * len(self.Particles) / (self.Ng * self.C["plasmaFreqDT"] ** 2)}))
+
+    def updateDt(self, dtNew):
+        # Update all parameters needed to update to a new time-step size.
+        # Also updates ending simulation time so that the total number of time-steps
+        # remains the same.
+        numTimesteps = self.T/self.dt
+        self.dt = dtNew
+        self.T = numTimesteps*dtNew
+        self.C.update({"plasmaFreqDT": self.dt * self.C["plasmaFreq"]})
+        self.C.update({"qBackground": -self.C["plasmaFreqDT"] ** 2 / 2.})
+        self.C.update({"delChg": self.C["plasmaFreqDT"] ** 2 * self.Ng / (2. * len(self.Particles))})
+        self.C.update(({"PEConversionFactor": -16.0 * len(self.Particles) / (self.Ng * self.C["plasmaFreqDT"] ** 2)}))
 
     def getTotalKineticEnergy(self):
         # Return the total kinetic energy of all particles in the Grid at each time-step
         # up to the present.
-        TotalKE = np.zeros_like(self.Particles[0].v)
-        for i in range(len(TotalKE)): # At each time-step...
+        TotalKE = np.zeros(len(self.Particles[0].v)-1)
+        for i in range(1, len(TotalKE)): # At each time-step...
             for prt in range(len(self.Particles)): # For each particle...
-                TotalKE[i] += 0.5*self.C["eMass"]*self.Particles[prt].v[i]**2
+                TotalKE[i-1] += (self.Particles[prt].v[i-1] + self.Particles[prt].v[i])**2
         return TotalKE
 
     ############################################
@@ -169,9 +185,12 @@ class Grid1D:
         plt.grid()
         plt.show()
 
-    def animateState(self):
+    def animateState(self, animateVelocity=False):
         # duration of the video
-        duration = 60
+        if animateVelocity:
+            duration = 20
+        else:
+            duration = 60
         fps = 20
 
         # matplot subplot
@@ -183,9 +202,17 @@ class Grid1D:
             ax.clear()
 
             # plotting line
-            for prt in self.Particles:
-                ax.plot(prt.x[int(t*fps)%len(prt.x)], 0, 'o', label="Particle " + prt.ID)
-                ax.set_xlim([-0.5,self.Ng-0.5])
+            if not animateVelocity:
+                for prt in self.Particles:
+                    ax.plot(prt.x[int(t*fps)%len(prt.x)], 0, 'o', markersize=40, label="Particle " + prt.ID)
+                    ax.set_xlim([-0.5,self.Ng-0.5])
+            else:
+                for prt in self.Particles:
+                    ax.plot(prt.x[int(t*fps)%len(prt.x)], prt.v[int(t*fps)%len(prt.v)], '.')
+                    ax.set_xlim([-0.5,self.Ng-0.5])
+                    ax.set_ylim([-10, 10])
+                ax.set_xlabel("Position [Grid Spacings]")
+                ax.set_ylabel("Velocity [Grid Spacings/Plasma Period]")
 
             # returning numpy image
             return mplfig_to_npimage(fig)
