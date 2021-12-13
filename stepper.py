@@ -7,7 +7,7 @@
 #################################################################################
 
 import numpy as np
-from classes import Particle1D, Grid1D
+from classes import Particle1D, Grid1D, C
 
 
 def ChargeAssignmentStep(g, debug):
@@ -384,6 +384,16 @@ def check_general_user_input_validity(L, Ng, dt):
     if dt <= 0:
         raise ValueError("ERROR: Time Step must be a positive value")
 
+    # ensure that mesh spacing is no greater in order than the Debye length
+    if L/Ng > C["debyeLength"]:
+        print("Warning: Mesh Spacing L/Ng is greater than Debye length. To increase physical accuracy, try using more grid points or a smaller grid.")
+
+    # ensure that the timestep is small enough to capture the plasma frequency
+    if dt*C["plasmaFreq"] > 2:
+        print("Warning: Time-step dt may be too large compared to the plasma frequency. To increase physical accuracy, try decreasing the time-step size.")
+
+    if L < 10*C["debyeLength"]:
+        print("Warning: Grid size L is not much larger than the Debye Length. To accurately resolve Debye shielding, try increasing the grid length.")
 
 def run_simulations(L, Ng, dt, particles, random_state):
 
@@ -430,6 +440,10 @@ def run_simulations(L, Ng, dt, particles, random_state):
     for i in range(10):
         xi = random_seed.normal(0.6, 0.1)
         G.addParticle(Particle1D(ID=str(i + 7), x0=xi * Ng, v0=0))
+
+    # Ensure that enough particles are present to resolve Debye shielding
+    if len(G.Particles) < G.L:
+        print("Warning: There may not be enough particles present to resolve Debye shielding. If attempting to represent plasma waves, try using more particles.")
 
     # run the discrete model
     RunDiscreteModel(G)
