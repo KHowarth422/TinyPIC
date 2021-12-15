@@ -8,10 +8,10 @@
 
 import numpy as np
 from classes import Particle1D, Grid1D, C
+import time
 
 
 def ChargeAssignmentStep(g, debug):
-
     """
 
     Method to perform dimensionless Charge Assignment (pg. 34 of Hockney & Eastwood)
@@ -54,7 +54,6 @@ def ChargeAssignmentStep(g, debug):
 
 
 def PoissonStep(g):
-
     """
 
     Method to solve Poisson's equation to get potential at every point on the grid (pg. 35 of Hockney & Eastwood)
@@ -90,8 +89,8 @@ def PoissonStep(g):
         PE += g.Charge[p] * g.Potential[p]
     g.PE = np.append(g.PE, PE * g.C["PEConversionFactor"])
 
-def EFieldStep(g):
 
+def EFieldStep(g):
     """
 
     Method to calculate the electric field at every point on the grid using known potentials
@@ -118,7 +117,6 @@ def EFieldStep(g):
 
 
 def ForceInterpStep(g):
-
     """
 
     Method to calculate the dimensionless force interpolation for each particle
@@ -147,7 +145,6 @@ def ForceInterpStep(g):
 
 
 def vStep(g):
-
     """
 
     Method to calculate the time-step velocity for each particle
@@ -172,7 +169,6 @@ def vStep(g):
 
 
 def xStep(g):
-
     """
 
     Method to calculate the time-step position for each particle
@@ -206,7 +202,6 @@ def xStep(g):
 
 
 def DiscreteModelStep(g, debug):
-
     """
 
     Method to perform a single step through the discrete model on Grid g
@@ -264,7 +259,6 @@ def DiscreteModelStep(g, debug):
 
 
 def RunDiscreteModel(g, debug=False):
-
     """
 
     Method to perform a time-step of the discrete model from 0 to g.T
@@ -299,7 +293,6 @@ def RunDiscreteModel(g, debug=False):
 
 
 def check_particle_validity(particles):
-
     """
 
     Method to check the validity of the inputed particles to be simulated (as entered by the user)
@@ -334,7 +327,6 @@ def check_particle_validity(particles):
 
 
 def check_general_user_input_validity(L, Ng, dt):
-
     """
 
     Method to check the validity of the inputed initial conditions of the simluation (as entered by the user)
@@ -362,7 +354,7 @@ def check_general_user_input_validity(L, Ng, dt):
 
     # ensure that the grid length is an integer
     if not isinstance(L, int):
-        raise ValueError("ERROR: Grid Length must be an integer integer")
+        raise ValueError("ERROR: Grid Length must be an integer")
 
     # ensure that the number of cells in the grid is an integer
     if not isinstance(Ng, int):
@@ -385,18 +377,25 @@ def check_general_user_input_validity(L, Ng, dt):
         raise ValueError("ERROR: Time Step must be a positive value")
 
     # ensure that mesh spacing is no greater in order than the Debye length
-    if L/Ng > C["debyeLength"]:
-        print("Warning: Mesh Spacing L/Ng is greater than Debye length. To increase physical accuracy, try using more grid points or a smaller grid.")
+    if L / Ng > C["debyeLength"]:
+        print(
+            "WARNING: Mesh Spacing L/Ng is greater than Debye length. "
+            " \n To increase physical accuracy, try using more grid points or a smaller grid.")
 
     # ensure that the timestep is small enough to capture the plasma frequency
-    if dt*C["plasmaFreq"] > 2:
-        print("Warning: Time-step dt may be too large compared to the plasma frequency. To increase physical accuracy, try decreasing the time-step size.")
+    if dt * C["plasmaFreq"] > 2:
+        print(
+            "WARNING: Time-step dt may be too large compared to the plasma frequency. "
+            "\n To increase physical accuracy, try decreasing the time-step size.")
 
-    if L < 10*C["debyeLength"]:
-        print("Warning: Grid size L is not much larger than the Debye Length. To accurately resolve Debye shielding, try increasing the grid length.")
+    # ensure that the grid length is much less than the debeye length
+    if L < 10 * C["debyeLength"]:
+        print(
+            "WARNING: Grid size L is not much larger than the Debye Length. "
+            "\n To accurately resolve Debye shielding, try increasing the grid length.")
 
-def run_simulations(L, Ng, dt, particles, random_state):
 
+def run_simulations(L, Ng, dt, particles):
     """
 
     Method to run a 1D particle-in-cell simulation according to user-specified inputs
@@ -406,8 +405,7 @@ def run_simulations(L, Ng, dt, particles, random_state):
     L: length of simulation grid
     Ng: number of cells in grid
     dt: time step size
-     particles: list of Particle1D objects to be simulated
-    random_state: random number for simulations
+    particles: list of Particle1D objects to be simulated
 
     Raises
     -------
@@ -418,6 +416,9 @@ def run_simulations(L, Ng, dt, particles, random_state):
     None
 
     """
+
+    # start timer
+    start = time.time()
 
     # check the validity of the user-inputted particles and initial conditions
     check_particle_validity(particles)
@@ -430,20 +431,11 @@ def run_simulations(L, Ng, dt, particles, random_state):
     for particle in particles:
         G.addParticle(particle)
 
-    # if the user passed in a random state, use it otherwise create a truly random one
-    if random_state is None:
-        random_seed = np.random.RandomState()
-    else:
-        random_seed = np.random.RandomState(np.random.MT19937(np.random.SeedSequence(random_state)))
-
-    # add a random distribution of particles
-    for i in range(10):
-        xi = random_seed.normal(0.6, 0.1)
-        G.addParticle(Particle1D(ID=str(i + 7), x0=xi * Ng, v0=0))
-
     # Ensure that enough particles are present to resolve Debye shielding
     if len(G.Particles) < G.L:
-        print("Warning: There may not be enough particles present to resolve Debye shielding. If attempting to represent plasma waves, try using more particles.")
+        print(
+            "WARNING: There may not be enough particles present to resolve Debye shielding. "
+            "\n If attempting to represent plasma waves, try using more particles.")
 
     # run the discrete model
     RunDiscreteModel(G)
@@ -462,3 +454,7 @@ def run_simulations(L, Ng, dt, particles, random_state):
 
     # animate
     # G.animateState()
+
+    end = time.time()
+
+    print(f"SIMULATIONS COMPLETED SUCCESSFULLY in {np.around(end - start, 2)} seconds")
