@@ -20,7 +20,9 @@
 - driver2D.py: Wrapper script to execute program for 2D simulations
 - accuracyTests.py: Empirical tests for validating particle simulation accuracy 
 
-## Dependencies (Python 3 installation assumed):
+## Dependencies:
+
+For the following dependencies, we assume the user has already installed Python 3
 
 - pip install numpy
 - pip install moviepy
