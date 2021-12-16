@@ -28,9 +28,9 @@
 
 ## How to Use:
 
-1. Clone GitHub repository via git clone https://github.com/KHowarth422/TinyPIC.git
+1. Clone GitHub repository: 'git clone https://github.com/KHowarth422/TinyPIC.git'
 2. Generate a CSV of particles (see "Particles CSV Format" below)
-3. run a driver script: ```python python driver.py'''
+3. run a driver script: 'python driver.py'
 4. Enter the the grid size when prompted
 5. Enter the desired number of particles when prompted
 6. Enter the time-step when prompted
