@@ -54,3 +54,5 @@ For the following dependencies, we assume the user has already installed Python 
 |     4      |   57.6   |   -0.5   |
 |     5      |   76.8   |   2.0    |
 |     6      |   102.4  |   1.0    |
+
+- The directory sample_csv_inputs contains sample .csv files
