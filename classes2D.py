@@ -153,7 +153,8 @@ class Grid2D:
         # Plot the position of each particle
         for prt in self.Particles:
             plt.plot(prt.x_0, prt.x_1, 'o', label="Particle "+prt.ID)
-
+        plt.xlim([-0.5, self.Ng - 0.5])
+        plt.ylim([-0.5, self.Ng - 0.5])
         plt.xlabel("x-position")
         plt.ylabel("y-position")
         plt.title("Particle Trajectories")
@@ -162,34 +163,41 @@ class Grid2D:
 
     def plotCharge(self):
         # Plot the charge at every point on the grid
-        plt.plot(range(self.Ng),self.Charge,'o')
-        plt.xlabel("Grid Position [Intervals]")
-        plt.ylabel("Charge")
-        plt.title("Grid Charge")
+        X = range(self.Ng)
+        X, Y = np.meshgrid(X, X)
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        ax.plot_surface(X, Y, self.Charge)
+        ax.set_xlabel("X Grid Position [Intervals]")
+        ax.set_ylabel("Y Grid Position [Intervals]")
+        ax.set_zlabel("Grid Charge")
         plt.grid()
         plt.show()
 
     def plotEField(self):
-        # Plot the charge at every point on the grid
-        plt.plot(range(self.Ng),self.EField_0,'o')
-        plt.xlabel("Grid Position [Intervals]")
-        plt.ylabel("EField")
-        plt.title("Grid EField x")
+        # Plot the electric field as a vector field on the grid
+        plt.quiver(self.EField_0, self.EField_1)
+        plt.xlabel("X Grid Position [Intervals]")
+        plt.ylabel("Y Grid Position [Intervals]")
+        plt.title("Grid EField")
         plt.grid()
         plt.show()
 
     def plotPotential(self):
         # Plot the potential at every point on the grid
-        plt.plot(range(self.Ng), self.Potential, 'o')
-        plt.xlabel("Grid Position [Intervals]")
-        plt.ylabel("Potential")
-        plt.title("Grid Potential")
+        X = range(self.Ng)
+        X, Y = np.meshgrid(X, X)
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        ax.plot_surface(X, Y, self.Potential)
+        ax.set_xlabel("X Grid Position [Intervals]")
+        ax.set_ylabel("Y Grid Position [Intervals]")
+        ax.set_zlabel("Potential")
+        ax.set_title("Grid Potential")
         plt.grid()
         plt.show()
 
     def animateState(self):
         # duration of the video
-        duration = 60
+        duration = 20
         fps = 20
 
         # matplot subplot
@@ -202,8 +210,9 @@ class Grid2D:
 
             # plotting line
             for prt in self.Particles:
-                ax.plot(prt.x_0[int(t*fps)%len(prt.x_0)], 0, 'o', label="Particle x position " + prt.ID)
-                ax.set_xlim([-0.5,self.Ng-0.5])
+                ax.plot(prt.x_0[int(t*fps)%len(prt.x_0)], prt.x_1[int(t*fps)%len(prt.x_1)], 'o', label="Particle " + prt.ID)
+                ax.set_xlim([-0.5, self.Ng - 0.5])
+                ax.set_ylim([-0.5, self.Ng - 0.5])
 
             # returning numpy image
             return mplfig_to_npimage(fig)

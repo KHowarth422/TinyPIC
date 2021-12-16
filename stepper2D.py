@@ -1,7 +1,8 @@
 # File containing algorithms for Electrostatic 2D Particle-in-Cell simulations
 import numpy as np
 from numpy.random import MT19937, RandomState, SeedSequence
-from classes import Particle2D, Grid2D
+from classes2D import Particle2D, Grid2D
+import time
 
 def ChargeAssignmentStep(g, debug):
     # Dimensionless Charge Assignment, see pg. 34 of Hockney & Eastwood
@@ -12,33 +13,39 @@ def ChargeAssignmentStep(g, debug):
     # Accumulate scaled charge density
     for j in range(len(g.Particles)):
         # locate nearest mesh point
-        p0 = int(np.round(g.Particles[j].x_0[-1]))
-        p1 = int(np.round(g.Particles[j].x_1[-1]))
+        px = int(np.round(g.Particles[j].x_0[-1]))
+        py = int(np.round(g.Particles[j].x_1[-1]))
 
         if debug:
             try:
                 # increment charge density
-                g.Charge[p0][p1] += g.C["delChg"]
+                g.Charge[py,px] += g.C["delChg"]
             except IndexError:
                 print("IndexError for particle with position:",g.Particles[j].x[-1])
         else:
-            g.Charge[p0][p1] += g.C["delChg"]
+            g.Charge[py,px] += g.C["delChg"]
 
     if debug:
         print("Check Charge Neutrality. Sum of charges:",np.sum(g.Charge))
 
 def PoissonStep(g):
+    # Finite Difference matrix for 2D Poisson equation
     A = np.zeros((g.Ng**2, g.Ng**2))
-    for i in range(g.Ng**2):
-        for j in range(g.Ng**2):
-            if i == j: # set discretization coefficients with periodic BC
-                A[i,j] = -4
-                A[i,(j+1)%g.Ng**2] = 1
-                A[i,(j+2)%g.Ng**2] = 1
-                A[i,(j-1)%g.Ng**2] = 1 
-                A[i,(j-2)%g.Ng**2] = 1
-                break
-        A[i,0] = 0 # enforce phi_{0,0} = 0
+
+    # Mapping function from 2D indexing to 1D indexing
+    def M(x,y): return y*g.Ng + x
+
+    # Loop through 2D coordinates, and populate finite difference A matrix
+    for i in range(g.Ng):
+        for j in range(g.Ng):
+            Ai = M(i, j)
+            A[Ai, M(i, j - 1)%(g.Ng**2)] = 1
+            A[Ai, M(i - 1, j)%(g.Ng**2)] = 1
+            A[Ai, M(i, j)] = -4
+            A[Ai, M(i, j + 1)%(g.Ng**2)] = 1
+            A[Ai, M(i + 1, j)%(g.Ng**2)] = 1
+
+    #A[:,0] = np.zeros(g.Ng**2) # enforce phi_{0,0} = 0
 
     rho = g.Charge.flatten()
     phi = np.linalg.solve(A,rho)
@@ -60,12 +67,12 @@ def ForceInterpStep(g):
     # Dimensionless force interpolation for each particle
     for prt in g.Particles:
         # Get nearest mesh point
-        pos0 = int(np.round(prt.x_0[-1]))
-        pos1 = int(np.round(prt.x_1[-1]))
+        px = int(np.round(prt.x_0[-1]))
+        py = int(np.round(prt.x_1[-1]))
 
-        # Take E-field at nearest mesh point
-        prt.a_0.append(g.EField_0[pos0])
-        prt.a_1.append(g.EField_1[pos1])
+        # Take E-field at nearest mesh point + B field
+        prt.a_0.append(g.EField_0[py, px] + prt.v_1[-1]*0.1)
+        prt.a_1.append(g.EField_1[py, px] - prt.v_0[-1]*0.1)
 
 def vStep(g):
     # Time-step velocity for each particle
@@ -92,10 +99,15 @@ def DiscreteModelStep(g, debug):
         print("Begin Charge Assignment")
     ChargeAssignmentStep(g, debug)
 
+
     # Field Equations
     if debug:
         print("Begin Poisson Step")
+        start = time.perf_counter()
     PoissonStep(g)
+    if debug:
+        end = time.perf_counter()
+        print("Finished Poisson Step in "+str(end-start)+" s.")
 
     if debug:
         print("Begin EField Step")
@@ -134,20 +146,22 @@ if __name__ == '__main__':
     debug = False
 
     # Define an example grid
-    L = 128  # Grid length [m]
-    Ng = 128  # number of cells in grid
-    dt = 0.25  # time-step size [s]
+    L = 64  # Grid length [m]
+    Ng = 64  # number of cells in grid
+    dt = 0.25/5  # time-step size [s]
 
     # Run for a few time-steps
-    G = Grid2D(L=L, Ng=Ng, dt=0.25*dt, T=300*dt)
+    G = Grid2D(L=L, Ng=Ng, dt=dt, T=300*dt)
 
     # Define some example particles and add them to the grid
-    p1 = Particle2D(ID="1", x0=0.1*Ng, v0=1)
-    p2 = Particle2D(ID="2", x0=0.2*Ng, v0=0.6)
-    p3 = Particle2D(ID="3", x0=0.3*Ng, v0=1)
-    p4 = Particle2D(ID="4", x0=0.45*Ng, v0=-0.5)
-    p5 = Particle2D(ID="5", x0=0.6*Ng, v0=2)
-    p6 = Particle2D(ID="6", x0=0.8*Ng, v0=1)
+    p1 = Particle2D(ID="1", x0=22., x1=32., v1=1.)
+    p2 = Particle2D(ID="2", x0=32., x1=42., v0=1.)
+    p3 = Particle2D(ID="3", x0=42., x1=32., v1=-1.)
+    p4 = Particle2D(ID="4", x0=32., x1=22., v0=-1.)
+    p5 = Particle2D(ID="5", x0=25., x1=39., v0=0.5, v1=0.5)
+    p6 = Particle2D(ID="6", x0=39., x1=39., v0=0.5, v1=-0.5)
+    p7 = Particle2D(ID="7", x0=39., x1=25., v0=-0.5, v1=-0.5)
+    p8 = Particle2D(ID="8", x0=25., x1=25., v0=-0.5, v1=0.5)
 
     G.addParticle(p1)
     G.addParticle(p2)
@@ -155,6 +169,8 @@ if __name__ == '__main__':
     G.addParticle(p4)
     G.addParticle(p5)
     G.addParticle(p6)
+    G.addParticle(p7)
+    G.addParticle(p8)
 
     # TODO: Hari simplify this please
     # set random state for reproducibility when debugging
@@ -164,16 +180,16 @@ if __name__ == '__main__':
         rs = RandomState()
 
     # Add a big random distribution of particles
-    for i in range(10):
-        xi = rs.normal(0.6,0.1)
-        G.addParticle(Particle2D(ID=str(i+7), x0=xi*Ng, v0=0))
+    #for i in range(10):
+    #    xi = rs.normal(0.6,0.1)
+    #    G.addParticle(Particle2D(ID=str(i+7), x0=xi*Ng, v0=0))
 
     # Define an alternate grid
-    G2 = Grid2D(L=64, Ng=64, dt=0.25, T=100*0.25)
-    G2.addParticle(Particle2D("1", x0=10., x1 = 10))
-    G2.addParticle(Particle2D("2", x0=26., x1 = 26))
+    G2 = Grid2D(L=64, Ng=64, dt=0.25/2, T=100*0.25)
+    G2.addParticle(Particle2D("1", x0=10., x1 = 32., v0=1.))
+    G2.addParticle(Particle2D("2", x0=32., x1 = 32.))
     # G2.addParticle(Particle2D("2alt", x0=26., v0=3.))  # Can uncomment to try with extra particles
-    # G2.addParticle(Particle2D("3", x0=43.))  # Replace 2 with 2alt and 3 to recreate "3Particle 2D.mp4"
+    G2.addParticle(Particle2D("3", x0=15., x1=45., v1=1.))  # Replace 2 with 2alt and 3 to recreate "3Particle 2D.mp4"
 
     # Run the simulation and plot some results
     # Run with G to test many-particle case
@@ -185,5 +201,5 @@ if __name__ == '__main__':
     #G2.plotCharge()
     #G2.plotPotential()
     #G2.plotEField()
-    G2.plotState()
-    #G.animateState()
+    #G2.plotState()
+    G2.animateState()

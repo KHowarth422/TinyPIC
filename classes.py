@@ -1,7 +1,7 @@
 # Authors: Kyle Fridberg, Kevin Howarth, Hari Raval,                            #
 # Course: AM 205                                                                #
 # File: classes.py                                                              #
-# Description: Class definitions for data structures necesary for               #
+# Description: Class definitions for data structures necessary for              #
 # Electrostatic 1D Particle-in-Cell simulations. The file contains the          #
 # Particle1D class which represents a particle with some mass, charge,          #
 # and kinematic signature and a Grid1D class which represents the 1D grid in    #
