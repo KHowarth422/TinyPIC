@@ -1,4 +1,4 @@
-# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval,                            #
+# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval                             #
 # Course: AM 205                                                                #
 # File: classes.py                                                              #
 # Description: Class definitions for data structures necesary for               #
@@ -47,6 +47,7 @@ class Particle1D:
     ID: string identifier / unique label of an individual particle
     X0: initial position of particle in dimensionless units of intervals (default value 0)
     v0: initial velocity of particle in dimensionless units of cell widths per time-step (default value 0)
+    a: acceleration of particle in dimensionless units of cell widths per time-step^2
 
     Returns
     -------
@@ -89,6 +90,7 @@ class Particle1D:
         pNew.x = self.x[:]
         pNew.v = self.v[:]
         pNew.a = self.a[:]
+
         return pNew
 
 
@@ -105,6 +107,12 @@ class Grid1D:
     Ng: grid spacing for simulation
     dt: time-step size
     T: ending simulation time
+    Particles: list of all Particles in the grid
+    Charge: dimensionless charge at all grid points
+    Potential: dimensionless potential at all grid points
+    EField: dimensionless electric field at all grid points
+    PE: potential energy at each time-step
+    C: dictionary of physical values
 
     Returns
     -------
@@ -131,7 +139,7 @@ class Grid1D:
         self.Potential = np.zeros(Ng)
         # dimensionless electric field at all grid points
         self.EField = np.zeros(Ng)
-        # Potential energy at each time-step
+        # potential energy at each time-step
         self.PE = np.array([], dtype=float)
 
         # populate the dictionary with the correct values for plasmaFreqDT and qBackground
@@ -279,9 +287,27 @@ class Grid1D:
         self.C.update(({"PEConversionFactor": -16.0 * len(self.Particles) / (self.Ng * self.C["plasmaFreqDT"] ** 2)}))
 
     def updateDt(self, dtNew):
-        # Update all parameters needed to update to a new time-step size.
-        # Also updates ending simulation time so that the total number of time-steps
-        # remains the same.
+
+        """
+
+        Method to update all parameters needed to update to a new time-step size. Additionally, updates
+        ending simulation time so that the total number of time-steps remains the same
+
+        Parameters
+        ----------
+        dtNew: updated timestep
+
+        Raises
+        -------
+        None
+
+        Returns
+        -------
+        None
+
+        """
+
+        # update relevant parameters
         numTimesteps = self.T/self.dt
         self.dt = dtNew
         self.T = numTimesteps*dtNew
@@ -445,7 +471,7 @@ class Grid1D:
 
         Parameters
         ----------
-        None
+        animateVelocity: debug option to determine whether to build animation video or not
 
         Raises
         -------

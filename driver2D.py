@@ -1,13 +1,13 @@
 # Authors: Kyle Fridberg, Kevin Howarth, Hari Raval                             #
 # Course: AM 205                                                                #
-# File: driver.py                                                               #
-# Description: Run a 1D particle in cell simulation for a desired number of     #
+# File: driver2D.py                                                             #
+# Description: Run a 2D particle in cell simulation for a desired number of     #
 # cells, inputted initial conditions, and a custom grid size. This file is the  #
 # only one which the user should interact with to run their simulations. The    #
-# required files to run this driver script are classes.py and stepper.py.       #
+# required files to run this driver script are classes2D.py and stepper2D.py.   #
 #################################################################################
-from classes import Particle1D
-from stepper import run_simulations
+from classes2D import Particle2D
+from stepper2D import run_simulations
 import csv
 import tkinter as tk
 import time
@@ -45,15 +45,15 @@ def initiate_simulations():
     # run the script
     >>> python3 driver.py
     # choose a grid length when prompted
-    >>> L = 128
+    >>> L = 64
     # choose a number of cells to use in the grid when prompted
-    >>> Ng = 128
+    >>> Ng = 64
     # choose a time step when prompted
-    >>> dt = 0.0625
+    >>> dt = 0.125
      # choose a simulation end time (in seconds) when prompted
-    >>> T = 75
+    >>> T = 25
     # select a formatted CSV file when prompted by the file browser menu
-    >>> "select particle_1D_input_ex_1.csv from TinyPIC/sample_csv_inputs/one_dimensional_inputs/ "
+    >>> "select particle_2D_input_ex_2.csv from TinyPIC/sample_csv_inputs/two_dimensional_inputs/ "
 
     """
 
@@ -78,7 +78,8 @@ def initiate_simulations():
             if line_count == 0:
                 pass
             else:
-                particles.append(Particle1D(ID=str(row[0]), x0=float(row[1]), v0=float(row[2])))
+                particles.append(Particle2D(ID=str(row[0]), x0=float(row[1]), x1=float(row[2]),
+                                            v0=float(row[3]), v1=float(row[4])))
 
     # run the simulations
     run_simulations(L, Ng, dt, T, particles)

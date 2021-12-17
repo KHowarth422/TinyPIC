@@ -1,4 +1,4 @@
-# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval,                            #
+# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval                             #
 # Course: AM 205                                                                #
 # File: stepper.py                                                              #
 # Description: Primary algorithms for Electrostatic 1D                          #
@@ -12,6 +12,7 @@ import time
 
 
 def ChargeAssignmentStep(g, debug):
+
     """
 
     Method to perform dimensionless Charge Assignment (pg. 34 of Hockney & Eastwood)
@@ -54,6 +55,7 @@ def ChargeAssignmentStep(g, debug):
 
 
 def PoissonStep(g):
+
     """
 
     Method to solve Poisson's equation to get potential at every point on the grid (pg. 35 of Hockney & Eastwood)
@@ -91,6 +93,7 @@ def PoissonStep(g):
 
 
 def EFieldStep(g):
+
     """
 
     Method to calculate the electric field at every point on the grid using known potentials
@@ -117,6 +120,7 @@ def EFieldStep(g):
 
 
 def ForceInterpStep(g):
+
     """
 
     Method to calculate the dimensionless force interpolation for each particle
@@ -145,6 +149,7 @@ def ForceInterpStep(g):
 
 
 def vStep(g):
+
     """
 
     Method to calculate the time-step velocity for each particle
@@ -169,6 +174,7 @@ def vStep(g):
 
 
 def xStep(g):
+
     """
 
     Method to calculate the time-step position for each particle
@@ -202,6 +208,7 @@ def xStep(g):
 
 
 def DiscreteModelStep(g, debug):
+
     """
 
     Method to perform a single step through the discrete model on Grid g
@@ -259,6 +266,7 @@ def DiscreteModelStep(g, debug):
 
 
 def RunDiscreteModel(g, debug=False):
+
     """
 
     Method to perform a time-step of the discrete model from 0 to g.T
@@ -278,7 +286,6 @@ def RunDiscreteModel(g, debug=False):
 
     """
 
-    # TODO: Kevin add checking for the four constraints on pg. 32 of Hockney & Eastwood
     # initialize time to time 0
     t = 0
 
@@ -293,6 +300,7 @@ def RunDiscreteModel(g, debug=False):
 
 
 def check_particle_validity(particles):
+
     """
 
     Method to check the validity of the inputed particles to be simulated (as entered by the user)
@@ -326,7 +334,8 @@ def check_particle_validity(particles):
         print("WARNING: Particle simulation yields the best results with more than 1 particle ")
 
 
-def check_general_user_input_validity(L, Ng, dt):
+def check_general_user_input_validity(L, Ng, dt, T):
+
     """
 
     Method to check the validity of the inputed initial conditions of the simluation (as entered by the user)
@@ -336,6 +345,7 @@ def check_general_user_input_validity(L, Ng, dt):
     L: length of simulation grid
     Ng: number of cells in grid
     dt: time step size
+    T: simulation time
 
     Raises
     -------
@@ -349,8 +359,8 @@ def check_general_user_input_validity(L, Ng, dt):
     """
 
     # ensure the user is not passing in empty inital start conditions
-    if L is None or Ng is None or dt is None:
-        raise TypeError("ERROR: Grid Length, Number of cells, and time step can not be of Type None")
+    if L is None or Ng is None or dt is None or T is None:
+        raise TypeError("ERROR: Grid Length, number of cells, time step, and simulation time can not be of Type None")
 
     # ensure that the grid length is an integer
     if not isinstance(L, int):
@@ -364,6 +374,10 @@ def check_general_user_input_validity(L, Ng, dt):
     if not isinstance(dt, (float, int)):
         raise ValueError("ERROR: Time Step must be a float or integer ")
 
+    # ensure that the simulation ending time is a numeric value
+    if not isinstance(T, (float, int)):
+        raise ValueError("ERROR: Simulation time must be a float or integer ")
+
     # ensure that the grid length is positive
     if L <= 0:
         raise ValueError("ERROR: Grid Length must be a positive value")
@@ -375,6 +389,10 @@ def check_general_user_input_validity(L, Ng, dt):
     # ensure that the time step is positive
     if dt <= 0:
         raise ValueError("ERROR: Time Step must be a positive value")
+
+    # ensure that the simulation time is positive
+    if T <= 0:
+        raise ValueError("ERROR: Simulation time must be a positive value")
 
     # ensure that mesh spacing is no greater in order than the Debye length
     if L / Ng > C["debyeLength"]:
@@ -395,7 +413,8 @@ def check_general_user_input_validity(L, Ng, dt):
             "\n To accurately resolve Debye shielding, try increasing the grid length.")
 
 
-def run_simulations(L, Ng, dt, particles):
+def run_simulations(L, Ng, dt, T, particles):
+
     """
 
     Method to run a 1D particle-in-cell simulation according to user-specified inputs
@@ -405,6 +424,7 @@ def run_simulations(L, Ng, dt, particles):
     L: length of simulation grid
     Ng: number of cells in grid
     dt: time step size
+    T: simulation end time
     particles: list of Particle1D objects to be simulated
 
     Raises
@@ -422,10 +442,10 @@ def run_simulations(L, Ng, dt, particles):
 
     # check the validity of the user-inputted particles and initial conditions
     check_particle_validity(particles)
-    check_general_user_input_validity(L, Ng, dt)
+    check_general_user_input_validity(L, Ng, dt, T)
 
     # initialize a grid with inputted conditions
-    G = Grid1D(L=L, Ng=Ng, dt=0.25 * dt, T=300 * dt)
+    G = Grid1D(L=L, Ng=Ng, dt=dt, T=T)
 
     # add all paricles to the grid
     for particle in particles:
@@ -440,6 +460,9 @@ def run_simulations(L, Ng, dt, particles):
     # run the discrete model
     RunDiscreteModel(G)
 
+    # end the timer before plotting begins
+    end = time.time()
+
     # plot the charge
     G.plotCharge()
 
@@ -453,8 +476,6 @@ def run_simulations(L, Ng, dt, particles):
     G.plotState()
 
     # animate
-    # G.animateState()
+    G.animateState()
 
-    end = time.time()
-
-    print(f"SIMULATIONS COMPLETED SUCCESSFULLY in {np.around(end - start, 2)} seconds")
+    print(f"1D SIMULATION COMPLETED SUCCESSFULLY in {np.around(end - start, 2)} seconds!")
