@@ -1,4 +1,4 @@
-# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval,                            #
+# Authors: Kyle Fridberg, Kevin Howarth, Hari Raval                             #
 # Course: AM 205                                                                #
 # File: stepper.py                                                              #
 # Description: Primary algorithms for Electrostatic 1D                          #
@@ -8,6 +8,7 @@
 
 import numpy as np
 from classes import Particle1D, Grid1D, C
+import time
 
 
 def ChargeAssignmentStep(g, debug):
@@ -89,6 +90,7 @@ def PoissonStep(g):
     for p in range(g.Ng):
         PE += g.Charge[p] * g.Potential[p]
     g.PE = np.append(g.PE, PE * g.C["PEConversionFactor"])
+
 
 def EFieldStep(g):
 
@@ -284,7 +286,6 @@ def RunDiscreteModel(g, debug=False):
 
     """
 
-    # TODO: Kevin add checking for the four constraints on pg. 32 of Hockney & Eastwood
     # initialize time to time 0
     t = 0
 
@@ -333,7 +334,7 @@ def check_particle_validity(particles):
         print("WARNING: Particle simulation yields the best results with more than 1 particle ")
 
 
-def check_general_user_input_validity(L, Ng, dt):
+def check_general_user_input_validity(L, Ng, dt, T):
 
     """
 
@@ -344,6 +345,7 @@ def check_general_user_input_validity(L, Ng, dt):
     L: length of simulation grid
     Ng: number of cells in grid
     dt: time step size
+    T: simulation time
 
     Raises
     -------
@@ -357,12 +359,12 @@ def check_general_user_input_validity(L, Ng, dt):
     """
 
     # ensure the user is not passing in empty inital start conditions
-    if L is None or Ng is None or dt is None:
-        raise TypeError("ERROR: Grid Length, Number of cells, and time step can not be of Type None")
+    if L is None or Ng is None or dt is None or T is None:
+        raise TypeError("ERROR: Grid Length, number of cells, time step, and simulation time can not be of Type None")
 
     # ensure that the grid length is an integer
     if not isinstance(L, int):
-        raise ValueError("ERROR: Grid Length must be an integer integer")
+        raise ValueError("ERROR: Grid Length must be an integer")
 
     # ensure that the number of cells in the grid is an integer
     if not isinstance(Ng, int):
@@ -371,6 +373,10 @@ def check_general_user_input_validity(L, Ng, dt):
     # ensure that the time step is a numeric value
     if not isinstance(dt, (float, int)):
         raise ValueError("ERROR: Time Step must be a float or integer ")
+
+    # ensure that the simulation ending time is a numeric value
+    if not isinstance(T, (float, int)):
+        raise ValueError("ERROR: Simulation time must be a float or integer ")
 
     # ensure that the grid length is positive
     if L <= 0:
@@ -384,18 +390,30 @@ def check_general_user_input_validity(L, Ng, dt):
     if dt <= 0:
         raise ValueError("ERROR: Time Step must be a positive value")
 
+    # ensure that the simulation time is positive
+    if T <= 0:
+        raise ValueError("ERROR: Simulation time must be a positive value")
+
     # ensure that mesh spacing is no greater in order than the Debye length
-    if L/Ng > C["debyeLength"]:
-        print("Warning: Mesh Spacing L/Ng is greater than Debye length. To increase physical accuracy, try using more grid points or a smaller grid.")
+    if L / Ng > C["debyeLength"]:
+        print(
+            "WARNING: Mesh Spacing L/Ng is greater than Debye length. "
+            " \n To increase physical accuracy, try using more grid points or a smaller grid.")
 
     # ensure that the timestep is small enough to capture the plasma frequency
-    if dt*C["plasmaFreq"] > 2:
-        print("Warning: Time-step dt may be too large compared to the plasma frequency. To increase physical accuracy, try decreasing the time-step size.")
+    if dt * C["plasmaFreq"] > 2:
+        print(
+            "WARNING: Time-step dt may be too large compared to the plasma frequency. "
+            "\n To increase physical accuracy, try decreasing the time-step size.")
 
-    if L < 10*C["debyeLength"]:
-        print("Warning: Grid size L is not much larger than the Debye Length. To accurately resolve Debye shielding, try increasing the grid length.")
+    # ensure that the grid length is much less than the debeye length
+    if L < 10 * C["debyeLength"]:
+        print(
+            "WARNING: Grid size L is not much larger than the Debye Length. "
+            "\n To accurately resolve Debye shielding, try increasing the grid length.")
 
-def run_simulations(L, Ng, dt, particles, random_state):
+
+def run_simulations(L, Ng, dt, T, particles):
 
     """
 
@@ -406,8 +424,8 @@ def run_simulations(L, Ng, dt, particles, random_state):
     L: length of simulation grid
     Ng: number of cells in grid
     dt: time step size
-     particles: list of Particle1D objects to be simulated
-    random_state: random number for simulations
+    T: simulation end time
+    particles: list of Particle1D objects to be simulated
 
     Raises
     -------
@@ -419,34 +437,31 @@ def run_simulations(L, Ng, dt, particles, random_state):
 
     """
 
+    # start timer
+    start = time.time()
+
     # check the validity of the user-inputted particles and initial conditions
     check_particle_validity(particles)
-    check_general_user_input_validity(L, Ng, dt)
+    check_general_user_input_validity(L, Ng, dt, T)
 
     # initialize a grid with inputted conditions
-    G = Grid1D(L=L, Ng=Ng, dt=0.25 * dt, T=300 * dt)
+    G = Grid1D(L=L, Ng=Ng, dt=dt, T=T)
 
     # add all paricles to the grid
     for particle in particles:
         G.addParticle(particle)
 
-    # if the user passed in a random state, use it otherwise create a truly random one
-    if random_state is None:
-        random_seed = np.random.RandomState()
-    else:
-        random_seed = np.random.RandomState(np.random.MT19937(np.random.SeedSequence(random_state)))
-
-    # add a random distribution of particles
-    for i in range(10):
-        xi = random_seed.normal(0.6, 0.1)
-        G.addParticle(Particle1D(ID=str(i + 7), x0=xi * Ng, v0=0))
-
     # Ensure that enough particles are present to resolve Debye shielding
     if len(G.Particles) < G.L:
-        print("Warning: There may not be enough particles present to resolve Debye shielding. If attempting to represent plasma waves, try using more particles.")
+        print(
+            "WARNING: There may not be enough particles present to resolve Debye shielding. "
+            "\n If attempting to represent plasma waves, try using more particles.")
 
     # run the discrete model
     RunDiscreteModel(G)
+
+    # end the timer before plotting begins
+    end = time.time()
 
     # plot the charge
     G.plotCharge()
@@ -461,4 +476,6 @@ def run_simulations(L, Ng, dt, particles, random_state):
     G.plotState()
 
     # animate
-    # G.animateState()
+    G.animateState()
+
+    print(f"1D SIMULATION COMPLETED SUCCESSFULLY in {np.around(end - start, 2)} seconds!")
