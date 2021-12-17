@@ -91,7 +91,8 @@ def timeStepSizeConvergence1D(Ng, dt):
     Ng_list = np.array([Ng*10**n for n in range(3)])
 
     # Simulate once with a grid with half the smallest time-step size, and ten times
-    # the largest number of grid points.
+    #  # Todo: FIX THIS it is ending at a different time than other sims so obviously error
+    #          will be huge
     G_smallest = G.__copy__()
     G_smallest.updateDt(dt_list[-1]/2)
     G_smallest.updateNg(Ng_list[-1]*10)

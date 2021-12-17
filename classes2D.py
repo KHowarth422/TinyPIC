@@ -340,7 +340,7 @@ class Grid2D:
         plt.show()
 
     def plotCharge(self):
-
+      
         """
 
         Method to plot the charge at every point on the grid

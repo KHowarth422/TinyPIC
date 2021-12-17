@@ -10,7 +10,6 @@ import numpy as np
 from classes2D import Particle2D, Grid2D, C
 import time
 
-
 def ChargeAssignmentStep(g, debug):
 
     """
@@ -56,7 +55,7 @@ def ChargeAssignmentStep(g, debug):
 
 
 def PoissonStep(g):
-
+  
     """
 
     Method to solve Poisson's equation to get potential at every point on the grid (pg. 35 of Hockney & Eastwood)
@@ -160,8 +159,8 @@ def ForceInterpStep(g):
         py = int(np.round(prt.x_1[-1]))
 
         # extract the electric field at that nearest mesh point
-        prt.a_0.append(g.EField_0[py, px] + prt.v_1[-1] * 0.1)
-        prt.a_1.append(g.EField_1[py, px] - prt.v_0[-1] * 0.1)
+        prt.a_0.append(g.EField_0[py, px])
+        prt.a_1.append(g.EField_1[py, px])
 
 
 def vStep(g):
@@ -254,6 +253,9 @@ def DiscreteModelStep(g, debug):
         start = time.perf_counter()
     # perform poisson computations
     PoissonStep(g)
+    if debug:
+        end = time.perf_counter()
+        print("Finished Poisson Step in "+str(end-start)+" s.")
 
     # print field equation (electric field) diagnostics if debug is set to TRUE
     if debug:
