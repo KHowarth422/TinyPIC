@@ -50,6 +50,9 @@ For the following dependencies, we assume the user has already installed Python 
 
 - All 1D simulation CSV files containing particle data should be set up with three columns and any desired number of rows. The first row should contain the headers associated with a particle's ID, position, and velocity. Each subsequent row contains the associated data for each particle. The particle ID must be a string and the position and velocity can be integer or float values.
 
+- Note that position is given in dimensionless units of Grid Spacings, and velocity is given in dimensionless units of Grid Spacings per Timestep.
+The units of time are t/T, where T is the plasma period, and can be written as 2*pi over the plasma frequency.
+
 - Below, we include a sample CSV set-up for 6 particles: 
 
 
@@ -72,6 +75,8 @@ However, we recommend that to simulate the two-stream instability, the user shou
 ### 2D Simulation Format
 
 - All 2D simulation CSV files containing particle data should be set up with five columns and any desired number of rows. The first row should contain the headers associated with a particle's ID, x position, y position, x velocity, and y velocity. Each subsequent row contains the associated data for each particle. The particle ID must be a string and the position and velocity can be integer or float values.
+
+- The units are the same as described for the 1D case.
 
 - Below, we include a sample CSV set-up for 3 particles: 
 
