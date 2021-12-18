@@ -17,19 +17,55 @@ import sys
 ########################################
 
 def S(R_GS, R_GS2, ui, bi):
-    # Solution operator function. On a given grid level, the solution operator
-    # returns a better approximation to the solution. In general this can be
-    # any method for iterating to solve a linear system.
+
+    """
+
+    Solution operator function. On a given grid level, the solution operator
+    returns a better approximation to the solution. In general this can be
+    any method for iterating to solve a linear system.
+
+    Parameters
+    ----------
+    R_GS, R_GS2:  2D np.arrays used for iteration towards solution. The values of these
+                  arrays determine which solution iteration method is used - eg. Jacobi,
+                  Gauss-Seidel, Successive Over-Relaxation, etc.
+    ui: 1D np.array containing the current guess for the solution vector.
+    bi: 1D np.array containing the source term.
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    uiNew: an improved guess for the solution vector.
+
+    """
 
     # Return an iteration
-    return R_GS @ ui +  R_GS2 @ bi
+    return R_GS @ ui + R_GS2 @ bi
 
 def R(b):
-    # Restriction operator function. On a given grid level, the restriction operator
-    # returns a restriction on the current level's source vector, b, such that the
-    # restriction corresponds to the source vector on a coarser grid. This implementation
-    # uses a weighted average of each point and its eight neighbors along with the known
-    # periodic boundary conditions of the system.
+
+    """
+
+    Restriction operator function. This implementation uses a weighted average of each
+    point and its eight neighbors along with the known periodic boundary conditions
+    of the system.
+
+    Parameters
+    ----------
+    b: 1D np.array containing the source vector at the current grid size
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    bCoarser: 1D np.array containing the source vector restricted to a coarser grid.
+
+    """
 
     # First reshape from vector form to square grid, and create coarser grid
     dimCurrent = int(np.sqrt(len(b)))
@@ -47,17 +83,31 @@ def R(b):
         for j in range(dimNew):
             idx_i = range(2*i-1, 2*i+2)
             idx_j = range(2*j-1, 2*j+2)
-            bCoarser[i,j] = np.tensordot(RKernel, b.take(idx_i,mode='wrap', axis=0).take(idx_j,mode='wrap',axis=1))
+            bCoarser[i, j] = np.tensordot(RKernel, b.take(idx_i,mode='wrap', axis=0).take(idx_j,mode='wrap',axis=1))
 
     # Return coarser matrix
     return bCoarser.flatten()
 
 def T(u):
-    # Interpolation operator function. On a given grid level, the interpolation
-    # operator returns an interpolation of the current level's solution vector, u, such
-    # that the interpolation corresponds to the solution vector on a finer grid. This
-    # implementation uses bilinear interpolation specific to a 2D grid with an even square
-    # side length and periodic boundary conditions.
+
+    """
+
+    Interpolation operator function. This implementation uses bilinear interpolation
+    specific to a 2D grid with an even square side length and periodic boundary conditions.
+
+    Parameters
+    ----------
+    u: 1D np.array containing the solution vector guess at the current grid size
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    uNew: 1D np.array containing the solution vector interpolated to the next finer grid size
+
+    """
 
     # Get grid sizes and create new solution vector
     dimCurrent = int(np.sqrt(len(u)))
@@ -98,11 +148,25 @@ def T(u):
     return uNew
 
 def T1(u):
-    # Alternate interpolation operator function. On a given grid level, the interpolation
-    # operator returns an interpolation of the current level's solution vector, u, such
-    # that the interpolation corresponds to the solution vector on a finer grid. This
-    # implementation uses bilinear interpolation for application to a 2-Dimensional grid
-    # with an odd square side length.
+
+    """
+
+    Alternate interpolation operator function. This implementation uses bilinear
+    interpolation for application to a 2-Dimensional grid with an odd square side length.
+
+    Parameters
+    ----------
+    u: 1D np.array containing the solution vector guess at the current grid size
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    uNew: 1D np.array containing the solution vector interpolated to the next finer grid size
+
+    """
 
     # First reshape from vector form to square grid, and create finer grid
     dimCurrent = int(np.sqrt(len(u)))
@@ -138,10 +202,27 @@ def T1(u):
 ####################################
 
 def getT(dim):
-    # Returns the interpolation matrix of size (dim**2, (2*dim)**2) for the periodic
-    # boundary condition case with even grid square side lengths. This matrix interpolates
-    # a periodic grid of side length dim to the same grid with side length 2*dim, with twice
-    # as many points, using bilinear interpolation.
+
+    """
+
+    Method to get the interpolation matrix of a specified dimension. This matrix interpolates
+    a periodic grid of side length dim to the same grid with side length 2*dim, with twice
+    as many points, using bilinear interpolation.
+
+    Parameters
+    ----------
+    dim: The number of points on a single side of the current size 2D grid.
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    T: A 2D np.array of size (dim**2, (2*dim)**2) for interpolating a 2D grid solution vector
+       to a twice-as-fine grid.
+
+    """
 
     dimNew = 2*dim
 
@@ -175,17 +256,52 @@ def getT(dim):
     return T
 
 def getR(dim):
-    # Returns the restriction matrix of size ((2*dim)**2, dim**2) for the periodic
-    # boundary condition case with even grid square side lengths. This matrix restricts
-    # a periodic grid of side length dim to the same grid with side length dim/2, with half
-    # as many points, using reverse bilinear interpolation.
+
+    """
+
+    Method to get the restriction matrix of a specified dimension. This matrix restricts
+    a periodic grid of side length dim to the same grid with side length dim/2, with half
+    as many points, using bilinear interpolation.
+
+    Parameters
+    ----------
+    dim: The number of points on a single side of the current size 2D grid.
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    R: A 2D np.array of size ((2*dim)**2, dim**2) for restricting a 2D grid source vector
+       to a twice-as-coarse grid.
+
+    """
 
     # Luckily, the restriction matrix is just one fourth of the transpose of the interpolation matrix
     return 0.25*getT(int(dim/2)).T
 
 def A(Ai):
-    # Operator matrix constructor function. Given the differential operator matrix
-    # on a finer level, return the matrix reduced to a coarser level.
+
+    """
+
+    Method to construct the differential operator matrix for the next smallest grid size.
+
+    Parameters
+    ----------
+    Ai: The differential operator matrix on the current grid level
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    AiNew: The differential operator matrix reduced to a coarser level.
+
+    """
+
+    # Get R and T matrices, then apply A = RAT rule.
     dimFiner = int(np.sqrt(Ai.shape[0]))
     dimCoarser = int(dimFiner/2)
     Ti = getT(dimCoarser)
@@ -197,23 +313,35 @@ def A(Ai):
 #########################################
 
 def MultiStep(A_list, ui, bi, biList, iList, i, g, vDown, vUp, R_GS_list, R_GS2_list, isFirst=False):
-    # Recursive step of the multi-grid algorithm V-cycle.
-    # Inputs:
-    #    A_list - A list containing the A matrix needed at each grid resolution.
-    #    ui - The guess for the solution vector at the current grid resolution
-    #    bi - The source vector at the current resolution
-    #    biList - The list containing the original source vector restriction at all resolutions.
-    #    iList - The list containing the grid levels still to be visited. iList[i]
-    #            gives the current grid level to operate on.
-    #    i - the index of iList we are at.
-    #    g - the index of the coarsest grid level
-    #    vDown - The number of solution operator iterations to perform on the way down
-    #    vUp - The number of solution operator iterations to perform on the way up
-    #    isFirst - a bool describing whether this is the first time MultiStep is being called
-    #
-    # Outputs:
-    #    uiNew - A better solution at the current grid level.
-    #
+
+    """
+
+    Recursive step of the multi-grid algorithm cycle.
+
+    Parameters
+    ----------
+    A_list: A list containing the A matrix needed at each grid resolution.
+    ui: The guess for the solution vector at the current grid resolution
+    bi: The source vector at the current resolution
+    biList: The list containing the original source vector restriction at all resolutions.
+    iList: The list containing the grid levels still to be visited. iList[i]
+           gives the current grid level to operate on.
+    i: the index of iList we are at.
+    g: the index of the coarsest grid level
+    vDown: The number of solution operator iterations to perform on the way down
+    vUp: The number of solution operator iterations to perform on the way up
+    R_GS_list, R_GS2_list: Lists containing the operator matrices to be used for iterations on each level
+    isFirst: a bool describing whether this is the first time MultiStep is being called
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    uiNew: A better solution at the current grid level.
+
+    """
 
     # Get A matrix at current grid level.
     Ai = A_list[iList[i]]
@@ -273,6 +401,35 @@ def MultiStep(A_list, ui, bi, biList, iList, i, g, vDown, vUp, R_GS_list, R_GS2_
             return ui
 
 def MultiRunner(A0, b0, A_list=[], b_list=[], R_GS_list=[], R_GS2_list=[]):
+
+    """
+
+    Handler for the recursive MultiStep function. Implements the multigrid method to
+    solve A0 @ u0 = b0 for a 2D Poisson's equation with periodic boundary conditions.
+
+    Parameters
+    ----------
+    A0: Finite difference operator matrix for 2D grid
+    b0: Source term containing values on the 2D grid
+    A_list: List containing the finite difference operator matrix restricted to each
+            smaller grid size. If not provided, it will be constructed automatically.
+    b_list: List containing the source term restricted to each smaller grid size. If
+            not provided, it will be constructed automatically.
+    R_GS_list, R_GS2_list: Lists containing the operator matrices to be used for
+                           iterations on each grid level. If not provided, they will
+                           be constructed automatically to implement Gauss-Seidel
+                           iteration.
+
+    Raises
+    -------
+    None
+
+    Returns
+    -------
+    u0: 1D np.array containing the solution to the linear system A0 @ u0 = b0
+
+    """
+
     # Handler for recursive MultiStep function.
     # Inputs:
     #    A0 - Finite difference matrix for 2D grid
@@ -390,6 +547,6 @@ if __name__ == '__main__':
 
     # Test the runner
     N = 64
-    b0 = np.ones((64,64))
-    A0 = np.ones((64**2, 64**2))
-    MultiRunner(A0, b0)
+    b00 = np.ones((64,64))
+    A00 = np.ones((64**2, 64**2))
+    MultiRunner(A00, b00)
