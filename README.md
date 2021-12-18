@@ -1,5 +1,7 @@
 # Particle-in-Cell Method for Plasma Simulation
 
+![The beauty of PIC!](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/two_dimensional_inputs/swirl%202D.gif)
+
 ## Authors:
 
 - Kyle Fridberg
@@ -80,4 +82,5 @@ However, we recommend that to simulate the two-stream instability, the user shou
 |     2      |    32      |    32      |     0      |     0      |
 |     3      |    15      |    45      |     0      |     1      |
 
-- The directory sample_csv_inputs/two_dimensional_inputs/ contains sample .csv files
+- The directory sample_csv_inputs/two_dimensional_inputs/ contains sample .csv files. To recreate the gif shown at the
+top of this README, use [particle_2D_input_ex_swirl.csv](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/two_dimensional_inputs/particle_2D_input_ex_swirl.csv).
