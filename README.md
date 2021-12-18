@@ -62,7 +62,7 @@ For the following dependencies, we assume the user has already installed Python 
 
 - The directory sample_csv_inputs/one_dimensional_inputs/ contains sample .csv files
 
-- Note: One sample file is provided containing particles initialized to simulate the two-stream instability.
+- Note: A sample file is provided containing particles initialized to simulate the two-stream instability.
 However, we recommend that to simulate the two-stream instability, the user should run 
 `python accuracyTests.py --twostream` as this will create an impressive animation in v-x phase space.
 
