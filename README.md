@@ -1,5 +1,11 @@
 # Particle-in-Cell Method for Plasma Simulation
 
+## Abstract:
+
+This code implements an Electrostatic Particle-in-Cell method for plasma simulation, 
+following (and building on) the method as explained by [Hockney and Eastwood](https://doi.org/10.1201/9780367806934). An example
+of a 2-Dimensional simulation is shown below:
+
 ![The beauty of PIC!](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/two_dimensional_inputs/swirl%202D.gif)
 
 ## Authors:
@@ -69,8 +75,9 @@ The units of time are t/T, where T is the plasma period, and can be written as 2
 
 - Note: A sample file is provided containing particles initialized to simulate the two-stream instability.
 However, we recommend that to simulate the two-stream instability, the user should run 
-`python accuracyTests.py --twostream` as this will create an impressive animation in v-x phase space.
+`python accuracyTests.py --twostream` as this will create an impressive animation in v-x phase space, such as the one shown below:
 
+![A Two-stream Instability](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/one_dimensional_inputs/twostream.gif)
 
 ### 2D Simulation Format
 
