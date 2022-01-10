@@ -96,3 +96,13 @@ However, we recommend that to simulate the two-stream instability, the user shou
 
 - The directory sample_csv_inputs/two_dimensional_inputs/ contains sample .csv files. To recreate the gif shown at the
 top of this README, use [particle_2D_input_ex_swirl.csv](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/two_dimensional_inputs/particle_2D_input_ex_swirl.csv).
+
+### References
+
+1. R. Hockney and J. Eastwood, *Computer Simulation Using Particles*. McGraw-Hill Inc., 1981. Available: https://doi.org/10.1201/9780367806934
+
+2. J. W. Demmel, *Applied Numerical Linear Algebra*, SIAM, 1997. Available: http://dx.doi.org/10.1137/1.9781611971446
+
+3. C. H. Rycroft, "Iterative Methods for Linear Systems", Nov 2016. [Online]. Available: https://courses.seas.harvard.edu/courses/am205/notes/iter_lecture.pdf
+
+4. G. Strang, "Chapter 6.2: Iterative Methods", *AM62 Mathematical Methods for Engineers II Course Notes*. 2006. [Online]. Available: https://ocw.mit.edu/courses/mathematics/18-086-mathematical-methods-for-engineers-ii-spring-2006/readings/am62.pdf
