@@ -156,6 +156,8 @@ class Grid2D:
         self.EField_0 = np.zeros((Ng, Ng))
         # dimensionless electric field in vertical direction at all grid points
         self.EField_1 = np.zeros((Ng, Ng))
+        # placeholder variable for storing finite difference matrix so it doesn't need to be constructed each timestep
+        self.K = None
 
         # populate the dictionary with the correct values for plasmaFreqDT and qBackground
         self.C = C.copy()

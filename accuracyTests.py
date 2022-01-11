@@ -2,7 +2,10 @@
 # Course: AM 205                                                                #
 # File: accuracyTests.py                                                        #
 # Description: File containing functions for testing the accuracy of the PIC    #
-# code                                                                          #
+# code. To use this file, call it via the command line with the keyword         #
+# argument corresponding to the test you want to run. To see a list of tests    #
+# and corresponding keywords, simply run the file as                            #
+#   >> python accuracyTests.py                                                  #
 #################################################################################
 
 import numpy as np

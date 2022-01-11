@@ -304,6 +304,11 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False):
     # Get the "exact" solution as obtained by direct solution of the finite difference system
     xExact = LA.solve(A_2DCenteredDiff, -1.*bSource.flatten())
 
+    if argList[2] == "P":
+        # Adding a correction term to ensure a fair comparison between the direct and iterative solutions. Both satisfy
+        # Poisson's equation, but the direct solution ends up with an extra constant factor added in.
+        xExact = xExact - np.average(xExact)
+
     # Plot source and solution if specified
     if plotExtra:
         if argList[2] == "NP":
@@ -326,21 +331,7 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False):
         # Take the squared 2 norm of the error as the error measure
         errorList[itr] = LA.norm(xIter.flatten() - xExact) ** 2
 
-        # Pad the terms for more convenient error calculation
-        #if argList[2] == "NP":
-        #    xIter = np.pad(xIter, 1)
-        #    bSource = np.pad(bSource, 1)
-        #elif argList[2] == "P":
-        #    xIter = np.pad(xIter, 1, mode="wrap")
-        #    bSource = np.pad(bSource, 1, mode="wrap")
-
-        #for i in range(1, NGrid + 1):
-        #    for j in range(1, NGrid + 1):
-        #        z = bSource[i, j] + \
-        #            (xIter[i - 1, j] + xIter[i + 1, j] - 4 * xIter[i, j] + xIter[i, j - 1] + xIter[i, j + 1]) / dx ** 2
-        #        errorList[itr] += z ** 2
-
-    return errorList #* dx ** 2
+    return errorList
 
 ###########################################################
 #                    ITERATION METHODS                    #
@@ -405,11 +396,8 @@ def jacobiIter(b, h, bc, maxItr=5000):
         if bc == "Poisson2DPeriodic":
             xN = np.pad(xN[1:n + 1, 1:n + 1], 1, mode="wrap")
 
+        # update current matrix data and iterate
         x = xN.copy()
-
-        #if itr in [0, 10, 100, 1000]:
-        #    plot3DSurface([x], "Jacobi Update, itr = " + str(itr), bc=bc)
-
         itr += 1
 
     # remove padding on solution and return
@@ -516,8 +504,6 @@ def gaussSeidelIter(b, h, bc, maxItr=5000, SOR=False, chebyshevAccel=False):
             else:
                 w = 1 / (1 - 0.25 * w * rho ** 2)
 
-        #xRed = x.copy()
-
         # update black nodes using new information
         for i in range(1, n + 1):
             for j in range(1, n + 1):
@@ -536,9 +522,6 @@ def gaussSeidelIter(b, h, bc, maxItr=5000, SOR=False, chebyshevAccel=False):
         if chebyshevAccel:
             w = 1 / (1 - 0.25 * w * rho ** 2)
 
-        #if itr in [0, 10, 100, 1000]:
-            #plot3DSurface([xRed, x], ["Red Update, itr = " + str(itr), "Black Update, itr = " + str(itr)], bc=bc)
-
         itr += 1
 
     # remove padding on solution and return
@@ -547,7 +530,7 @@ def gaussSeidelIter(b, h, bc, maxItr=5000, SOR=False, chebyshevAccel=False):
 if __name__ == '__main__':
 
     argList = sys.argv
-    #argList = ['iterative_solvers.py', '--GS','NP','65']
+    # argList = ['iterative_solvers.py', '--SOR','P','65']  # fake input for debugging
 
     if len(argList) == 1:
         print("Must use an extra argument to specify a test.")
@@ -563,6 +546,8 @@ if __name__ == '__main__':
         print("  '--SORCA bc N' - test accuracy of the Successive Over-Relaxation method with Chebyshev Acceleration")
         print("                   for increasing iterations. bc is the boundary condition mode (P for periodic, NP")
         print("                   for non-periodic), and N is the system size.")
+        print("  '--methodcomparison bc N' - test the convergence rate of each of the four iteration methods for a")
+        print("                              given boundary condition bc and system size N.")
         print()
         print("Example usage: 'python iterative_solvers.py --convergence 10'")
 
@@ -574,11 +559,11 @@ if __name__ == '__main__':
             sys.exit()
 
         # construct a standard 2D centered-difference coefficient matrix for an N by N Poisson equation grid
-        N = int(argList[2])
-        A_centeredDiff2D = get2DCenteredDifferenceMatrix(N, 1, bc="Poisson2DZeroBoundary")
+        NInput = int(argList[2])
+        A_centeredDiff2D = get2DCenteredDifferenceMatrix(NInput, 1, bc="Poisson2DZeroBoundary")
 
         # construct a 2D centered-difference coefficient matrix for N by N Poisson with periodic boundary conditions
-        A_centeredDiff2DPeriodic = get2DCenteredDifferenceMatrix(N, 1, bc="Poisson2DPeriodic")
+        A_centeredDiff2DPeriodic = get2DCenteredDifferenceMatrix(NInput, 1, bc="Poisson2DPeriodic")
 
         # construct the conditioner matrix for Jacobi iteration - simply the diagonal part of A
         P_Jacobi = np.diag(np.diag(A_centeredDiff2D))
@@ -805,5 +790,7 @@ if __name__ == '__main__':
         print("  '--SORCA bc N' - test accuracy of the Successive Over-Relaxation method with Chebyshev Acceleration")
         print("                   for increasing iterations. bc is the boundary condition mode (P for periodic, NP")
         print("                   for non-periodic), and N is the system size.")
+        print("  '--methodcomparison bc N' - test the convergence rate of each of the four iteration methods for a")
+        print("                              given boundary condition bc and system size N.")
         print()
         print("Example usage: 'python iterative_solvers.py --convergence 10'")

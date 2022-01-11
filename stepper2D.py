@@ -8,6 +8,7 @@
 
 import numpy as np
 from classes2D import Particle2D, Grid2D, C
+from iterative_solvers import get2DCenteredDifferenceMatrix
 import time
 
 def ChargeAssignmentStep(g, debug):
@@ -78,26 +79,13 @@ def PoissonStep(g):
 
     """
 
-    # finite Difference matrix for 2D Poisson equation
-    A = np.zeros((g.Ng ** 2, g.Ng ** 2))
+    # finite difference matrix for 2D Poisson equation
+    if not g.K:
+        g.K = get2DCenteredDifferenceMatrix(g.Ng, 1, bc="Poisson2DPeriodic")
 
-    # mapping function from 2D indexing to 1D indexing
-    def M(x, y):
-        return y * g.Ng + x
-
-    # loop through 2D coordinates and populate finite difference A matrix
-    for i in range(g.Ng):
-        for j in range(g.Ng):
-            Ai = M(i, j)
-            A[Ai, M(i, j - 1) % (g.Ng ** 2)] = 1
-            A[Ai, M(i - 1, j) % (g.Ng ** 2)] = 1
-            A[Ai, M(i, j)] = -4
-            A[Ai, M(i, j + 1) % (g.Ng ** 2)] = 1
-            A[Ai, M(i + 1, j) % (g.Ng ** 2)] = 1
-
-    # compute the updated potential
+    # compute the updated potential by directly solving the linear system
     rho = g.Charge.flatten()
-    phi = np.linalg.solve(A, rho)
+    phi = np.linalg.solve(g.K, rho)
     g.Potential = np.reshape(phi, (g.Ng, g.Ng))
 
 
