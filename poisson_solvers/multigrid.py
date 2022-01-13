@@ -6,6 +6,10 @@
 # equation on a 2-Dimensional grid. This implementation restricts uses to       #
 # grid sizings with odd numbers of points for convenience with interpolation    #
 # and restrictions, for now.                                                    #
+#                                                                               #
+# Note that this code is currently non-functional.                              #
+# TODO: Update to utilize iterative methods in classical_iterative_solvers.py   #
+# TODO: Fix interpolation and restriction operators                             #
 #################################################################################
 
 import numpy as np

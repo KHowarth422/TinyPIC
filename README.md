@@ -106,3 +106,5 @@ top of this README, use [particle_2D_input_ex_swirl.csv](https://github.com/KHow
 3. C. H. Rycroft, "Iterative Methods for Linear Systems", Nov 2016. [Online]. Available: https://courses.seas.harvard.edu/courses/am205/notes/iter_lecture.pdf
 
 4. G. Strang, "Chapter 6.2: Iterative Methods", *AM62 Mathematical Methods for Engineers II Course Notes*. 2006. [Online]. Available: https://ocw.mit.edu/courses/mathematics/18-086-mathematical-methods-for-engineers-ii-spring-2006/readings/am62.pdf
+
+5. A. Iserles, *A First Course in the Numerical Analysis of Differential Equations*, Cambridge University Press, 2008. Available: https://doi.org/10.1017/CBO9780511995569

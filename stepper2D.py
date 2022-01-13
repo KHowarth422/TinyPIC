@@ -8,7 +8,7 @@
 
 import numpy as np
 from classes2D import Particle2D, Grid2D, C
-from iterative_solvers import get2DCenteredDifferenceMatrix
+from poisson_solvers.iterative_helpers import get2DCenteredDifferenceMatrix
 import time
 
 def ChargeAssignmentStep(g, debug):
