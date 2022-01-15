@@ -10,8 +10,10 @@
 
 import numpy as np
 from numpy import linalg as LA
+from scipy.linalg import solve_triangular
+from iterative_helpers import get2DCenteredDifferenceMatrix
 
-def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
+def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8, preconditioning=False, B=None):
 
     """
 
@@ -32,6 +34,11 @@ def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
     This choice of step direction, along with a neat choice of step size based on the residual at a current step size
     r_(k) = A @ x_(k) - b, leads to greatly improved convergence.
 
+    A preconditioning matrix can be used to improve convergence even further - this approach, based on Krylov subspaces,
+    is referred to as preconditioned conjugate gradient. Again the approach given by (Iserles, 2008) is followed, with
+    the preconditioning matrix chosen as S = B @ B.T, where B is the lower triangular part of the A matrix formed by the
+    five-point finite difference stencil. Preconditioned conjugate gradient may be used via a boolean argument.
+
     Note that this implementation is tailored to solving Poisson's equation on a 2D grid, with either zero-boundary
     or periodic boundary conditions.
 
@@ -44,10 +51,13 @@ def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
                 - "Poisson2DPeriodic" - solves Poisson equation on a 2D grid with periodic Dirichlet boundary conditions
     maxItr:  Scalar float specifying the number of iterations to use
     tol:  Scalar float specifying the tolerance value for the residual at which to stop iterating
+    preconditioning:  Boolean specifying whether preconditioning should be used.
+    B:  2D array containing the preconditioning matrix. If preconditioning == True, B must be provided.
 
     Raises
     -------
-    ValueError:  ValueError is raised if an invalid boundary condition is supplied
+    ValueError:  ValueError is raised if an invalid boundary condition is supplied, or if preconditioning == True
+                 and B == None.
 
     Returns
     -------
@@ -58,17 +68,35 @@ def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
     if bc not in ["Poisson2DZeroBoundary", "Poisson2DPeriodic"]:
         raise ValueError(("Please specify a valid boundary condition. Valid conditions include "
                           "\"Poisson2DZeroBoundary\" and \"Poisson2DPeriodic\""))
+    elif preconditioning:
+        try:
+            _ = B.shape
+        except AttributeError:
+            raise ValueError("If preconditioning is used, a lower-triangular B matrix must be provided.")
 
     # get system size
     n = b.shape[0]
     bFlat = b.flatten()
 
-    # Initialize solution guess, residual, step direction, and intermediate v vector
+    # Initialize solution guess, residual, step direction, and intermediate variables
     x = np.zeros_like(bFlat)
-    r = bFlat.copy()
+    v = np.zeros_like(bFlat)
+    Au = np.zeros_like(b)
+
+    if not preconditioning:
+        # r0 is chosen as a copy of b
+        r = bFlat.copy()
+    else:
+        # r0 is now obtained by solving the linear system Bh = b, where S = B @ B.T is the preconditioning matrix
+        # A good choice of preconditioner for the finite difference matrix arising from the five-point stencil arises
+        # by choosing B as the lower triangular part of A. This allows for easy solution via forward substitution.
+        # However, although operations involving B are cheap due to its structure, the construction of the A matrix
+        # (and subsequently the B matrix) is time-consuming, so it is done outside of this function.
+        #B = np.tril(get2DCenteredDifferenceMatrix(n, h, bc))
+        r = solve_triangular(B, bFlat, lower=True, check_finite=False)
+
     rOld = r.copy()
     d = r.copy()
-    v = np.zeros_like(bFlat)
 
     # perform iteration
     itr = 0
@@ -84,20 +112,41 @@ def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
             beta = rNorm ** 2 / rNormOld ** 2
             d = r + beta * d
 
-        # calculate the matrix-vector product v_(k) = A @ d_(k)
-        # a multiplication rule is used to perform this operation in O(n^2) time instead of O(n^4).
-        # this can be done because the structure of the matrix A is known based on the problem and boundary conditions.
-        # additionally, padding the matrix form of d allows for convenient programming of the multiplication rule.
-        if bc == "Poisson2DZeroBoundary":
-            dGrid = np.pad(np.reshape(d, (n, n)), 1)
-        else:
-            dGrid = np.pad(np.reshape(d, (n, n)), 1, mode="wrap")
+        # calculate v_(k)
+        if not preconditioning:
+            # v_(k) can be found directly from v_(k) = A @ d_(k)
+            # a multiplication rule is used to perform this operation in O(n^2) time instead of O(n^4).
+            # this can be done because the structure of the matrix A is known based on the problem and boundary conditions.
+            # additionally, padding the matrix form of d allows for convenient programming of the multiplication rule.
+            if bc == "Poisson2DZeroBoundary":
+                dGrid = np.pad(np.reshape(d, (n, n)), 1)
+            else:
+                dGrid = np.pad(np.reshape(d, (n, n)), 1, mode="wrap")
 
-        v = np.reshape(v, (n,n))
-        for i in range(1, n + 1):
-            for j in range(1, n + 1):
-                v[i - 1, j - 1] = -dGrid[i - 1, j] - dGrid[i + 1, j] - dGrid[i, j - 1] - dGrid[i, j + 1] + 4 * dGrid[i, j]
-        v = v.flatten() / h ** 2
+            v = np.reshape(v, (n, n))
+            for i in range(1, n + 1):
+                for j in range(1, n + 1):
+                    v[i - 1, j - 1] = -dGrid[i - 1, j] - dGrid[i + 1, j] - dGrid[i, j - 1] - dGrid[i, j + 1] + 4 * \
+                                      dGrid[i, j]
+            v = v.flatten() / h ** 2
+        else:
+            # v_(k) must be found in two steps
+            # first we solve B.T @ u = d_(k), which is easy because B.T is triangular
+            u = solve_triangular(B, d, lower=True, trans=1, check_finite=False)
+
+            # then we solve the linear system B @ v_(k) = A @ u
+            # similarly to above, a multiplication rule can be used to evaluate A @ u more efficiently. Then, the
+            # remaining system is easy to solve because B is triangular.
+            if bc == "Poisson2DZeroBoundary":
+                u = np.pad(np.reshape(u, (n, n)), 1)
+            else:
+                u = np.pad(np.reshape(u, (n, n)), 1, mode="wrap")
+
+            for i in range(1, n + 1):
+                for j in range(1, n + 1):
+                    Au[i - 1, j - 1] = -u[i - 1, j] - u[i + 1, j] - u[i, j - 1] - u[i, j + 1] + 4 * u[i, j]
+
+            v = solve_triangular(B, Au.flatten() / h ** 2, lower=True, check_finite=False)
 
         # calculate the step size, omega (notated here as w)
         w = rNorm ** 2 / np.dot(d, v)
@@ -107,5 +156,11 @@ def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8):
         rOld = r.copy()
         r = r - w * v
         itr += 1
+
+    if preconditioning:
+        # must recover actual solution via inv(B.T) @ x
+        BTinv = solve_triangular(B, np.identity(int(n**2)), lower=True, trans=1, check_finite=False)
+        for i in range(len(x)):
+            x[i] = np.dot(BTinv[i, i:], x[i:])
 
     return x

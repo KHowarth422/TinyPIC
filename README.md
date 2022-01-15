@@ -8,15 +8,14 @@ of a 2-Dimensional simulation is shown below:
 
 ![The beauty of PIC!](https://github.com/KHowarth422/TinyPIC/blob/main/sample_csv_inputs/two_dimensional_inputs/swirl%202D.gif)
 
+The code was originally written as a final project for the Fall 2021 Semester of AM 205 Advanced Scientific Computing: 
+Numerical Methods at Harvard University, and it has since been extended by the corresponding author.
+
 ## Authors:
 
+- Kevin Howarth (Corresponding Author; contact: khowarth@g.harvard.edu)
 - Kyle Fridberg
-- Kevin Howarth
 - Hari Raval
-
-## Course:
-
-- AM 205
 
 ## Directory Structure:
 
@@ -35,7 +34,6 @@ For the following dependencies, we assume the user has already installed Python 
 
 - pip install numpy
 - pip install moviepy
-
 
 ## How to Use:
 
