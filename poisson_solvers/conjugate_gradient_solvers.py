@@ -4,14 +4,11 @@
 # Description: Implementation of conjugate gradient methods for solving         #
 # large systems of linear equations, such as those arising in the               #
 # finite-difference solution of the Poisson equation and other elliptic PDEs.   #
-# To see a list of all keywords and testing routines, simply run:               #
-#      >> python conjugate_gradient_solvers.py                                  #
 #################################################################################
 
 import numpy as np
 from numpy import linalg as LA
 from scipy.linalg import solve_triangular
-from iterative_helpers import get2DCenteredDifferenceMatrix
 
 def conjugateGradient(b, h, bc, maxItr=100, tol=1e-8, preconditioning=False, B=None):
 

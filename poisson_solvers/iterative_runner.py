@@ -14,6 +14,7 @@ import time
 from iterative_helpers import plot3DSurface, get2DCenteredDifferenceMatrix
 from classical_iterative_solvers import jacobiIter, gaussSeidelIter
 from conjugate_gradient_solvers import conjugateGradient
+from spectral_solvers import spectralSolve
 import sys
 
 def runIterativeMethod(N, itrList, method, bc, plotExtra=False, trackRuntime=False):
@@ -40,6 +41,9 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False, trackRuntime=Fal
                 - "SORCA" - Uses Successive Over-Relaxation with Chebyshev Acceleration
                 - "CG" - Uses vanilla Conjugate Gradient method
                 - "PCG" - Uses preconditioned Conjugate Gradient method
+                - "spectral" - Uses a standard spectral method. Note that this special case is not an iterative method.
+                               For this case only, errorList and timeList are returned as scalars regardless of the
+                               value(s) of itrList.
     bc:  String specifying which boundary condition to use. Available cases include
                 - "Poisson2DZeroBoundary" - zero Dirichlet boundary conditions
                 - "Poisson2DPeriodic" - periodic Dirichlet boundary conditions
@@ -59,9 +63,9 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False, trackRuntime=Fal
     """
 
     # Input checking
-    if method not in ["jacobi", "GS", "SOR", "SORCA", "CG", "PCG"]:
+    if method not in ["jacobi", "GS", "SOR", "SORCA", "CG", "PCG", "spectral"]:
         raise ValueError(("Please specify a valid iterative method. Valid methods include 'jacobi', 'GS', 'SORCA',"
-                          " 'SOR', 'CG', 'PCG'."))
+                          " 'SOR', 'CG', 'PCG', 'spectral'."))
     elif bc not in ["Poisson2DZeroBoundary", "Poisson2DPeriodic"]:
         raise ValueError(("Please provide a valid boundary condition case. Valid cases include 'Poisson2DZeroBoundary'"
                           " and 'Poisson2DPeriodic'."))
@@ -136,7 +140,25 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False, trackRuntime=Fal
         elif bc == "Poisson2DPeriodic":
             plot3DSurface([bSource, xExact.reshape((NGrid, NGrid))], [plotTitleString1, plotTitleString2], bc="Poisson2DPeriodic")
 
-    # Now get the solution via the specified iteration, and observe how the error changes with increasing iterations.
+    # if spectral method, no need for iterations - solve and return immediately
+    if method == "spectral":
+        # time solution if necessary
+        if trackRuntime:
+            start = time.perf_counter()
+
+        xSpec = spectralSolve(bSource)
+
+        if trackRuntime:
+            end = time.perf_counter()
+
+        # Plot spectral solution next to exact solution
+        if plotExtra:
+            plot3DSurface([xSpec, xExact], ["Spectral Solution, N = "+str(NGrid), "Finite Difference Exact Soln."], bc=bc)
+
+        err = LA.norm(xSpec.flatten() - xExact) ** 2
+        return err, end - start
+
+    # Otherwise get the solution via specified iteration, and observe how the error changes with increasing iterations.
     errorList = np.zeros_like(itrList, dtype=float)
     timeList = np.zeros_like(itrList, dtype=float) if trackRuntime else None
     for itr in range(len(itrList)):
@@ -171,7 +193,7 @@ def runIterativeMethod(N, itrList, method, bc, plotExtra=False, trackRuntime=Fal
 if __name__ == '__main__':
 
     argList = sys.argv
-    #argList = ['iterative_runner.py', '--PCG','NP','65']  # fake input for debugging
+    #argList = ['iterative_runner.py', '--spectral','P']  # fake input for debugging
 
     if len(argList) == 1:
         print("Must use an extra argument to specify a test. Available tests include:")
@@ -196,136 +218,8 @@ if __name__ == '__main__':
         print()
         print("Example usage: 'python classical_iterative_solvers.py --jacobi NP 65'")
 
-    elif argList[1] == "--jacobi":
-        # tests for Jacobi iteration
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --jacobi NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of Jacobi Method, N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of Jacobi Method, N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([2 ** i for i in range(5, 13)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="jacobi", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList,errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
-    elif argList[1] == "--GS":
-        # tests for Gauss-Seidel iteration
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --GS NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of Gauss-Seidel Method, N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of Gauss-Seidel Method, N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([2 ** i for i in range(5, 13)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="GS", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList,errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
-    elif argList[1] == "--SOR":
-        # tests for Successive Over-Relaxation iteration
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --SOR NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of SOR Method, N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of SOR Method, N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([2 ** i for i in range(5, 13)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="SOR", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList,errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
-    elif argList[1] == "--SORCA":
-        # tests for Successive Over-Relaxation iteration with Chebyshev Acceleration
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --SORCA NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of SOR Method with Chebyshev Accel., N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of SOR Method with Chebyshev Accel., N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([2 ** i for i in range(5, 12)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="SORCA", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList, errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
     elif argList[1] == "--classicalcomparison":
-        # Run and compare convergence of each method
+        # Run and compare convergence of each classical iterative method
         if not len(argList) == 4:
             print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
             print("Example usage: 'python iterative_runner.py --classicalcomparison NP 65'")
@@ -372,72 +266,8 @@ if __name__ == '__main__':
         ax2.grid()
         plt.show()
 
-    elif argList[1] == "--CG":
-        # tests for Conjugate Gradient method
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --CG NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of CG Method, N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of CG Method, N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([10*i for i in range(1,16)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="CG", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList, errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
-    elif argList[1] == "--PCG":
-        # tests for Conjugate Gradient method
-        if not len(argList) == 4:
-            print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
-            print("Example usage: 'python iterative_runner.py --PCG NP 65'")
-            sys.exit()
-        elif argList[2] not in ["P", "NP"]:
-            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
-            sys.exit()
-        elif int(argList[3]) < 14:
-            print("Must specify number of grid points as at least 14 in order to avoid matplotlib broadcasting errors.")
-            sys.exit()
-
-        if argList[2] == "P":
-            BC = "Poisson2DPeriodic"
-            titleStr = "Convergence of PCG Method, N = " + argList[3] + ", Periodic BC"
-        elif argList[2] == "NP":
-            BC = "Poisson2DZeroBoundary"
-            titleStr = "Convergence of PCG Method, N = " + argList[3] + ", Zero BC"
-
-        # set number of iterations and call runner function
-        iterList = np.array([10*i for i in range(1,16)], dtype=int)
-        errList = runIterativeMethod(int(argList[3]), iterList, method="PCG", bc=BC, plotExtra=True)
-
-        # plot the error against number of iterations
-        plt.semilogy(iterList, errList)
-        plt.xlabel("# of Iterations")
-        plt.ylabel("Sum of Squared Solution Error")
-        plt.title(titleStr)
-        plt.grid()
-        plt.show()
-
     elif argList[1] == "--cgcomparison":
-        # Run and compare convergence of each method
+        # Run and compare convergence of each conjugate gradient method
         if not len(argList) == 4:
             print("Must specify boundary condition (P for periodic, NP for non-periodic) and system size N.")
             print("Example usage: 'python iterative_runner.py --cgcomparison NP 65'")
@@ -476,6 +306,45 @@ if __name__ == '__main__':
         ax2.set_ylabel("Runtime [s]")
         ax2.set_title("Method Runtimes")
         ax2.grid()
+        plt.show()
+
+    elif argList[1] == "--spectral":
+        # Run and compare convergence of standard spectral method
+        if not len(argList) == 3:
+            print("Must specify boundary condition (P for periodic, NP for non-periodic).")
+            print("Example usage: 'python iterative_runner.py --spectral P'")
+            sys.exit()
+        elif argList[2] not in ["P", "NP"]:
+            print("Must specify boundary condition as either P for periodic or NP for non-periodic (zero boundary).")
+            sys.exit()
+
+        if argList[2] == "P":
+            BC = "Poisson2DPeriodic"
+            titleStr = "Spectral Method Convergence, Periodic BC"
+        elif argList[2] == "NP":
+            BC = "Poisson2DZeroBoundary"
+            titleStr = "Spectral Method Convergence, Zero BC"
+
+        NList = np.array([5*n for n in range(3, 16)], dtype=int)
+        errListSpec = np.zeros_like(NList, dtype=float)
+        timeListSpec = np.zeros_like(NList, dtype=float)
+
+        for i in range(len(NList)):
+            errListSpec[i], timeListSpec[i] = runIterativeMethod(NList[i], None, method="spectral", bc=BC, plotExtra=True, trackRuntime=True)
+
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.plot(NList, errListSpec, '--')
+        ax1.set_title(titleStr)
+        ax1.set_xlabel("Number of Grid Points")
+        ax1.set_ylabel("Error with Exact FD Solution")
+        ax1.grid()
+
+        ax2.plot(NList, errListSpec, '--')
+        ax2.set_title("Runtimes")
+        ax2.set_xlabel("Number of Grid Points")
+        ax2.set_ylabel("Runtime (s)")
+        ax2.grid()
+
         plt.show()
 
     else:
